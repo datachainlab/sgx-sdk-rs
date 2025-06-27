@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members  = ["crates/*"]
+
+[workspace.dependencies]
+sgx_alloc = { path = "crates/sgx_alloc" }
+sgx_trts = { path = "crates/sgx_trts" }
+sgx_tse = { path = "crates/sgx_tse" }
+sgx_tseal = { path = "crates/sgx_tseal" }
+sgx_types = { path = "crates/sgx_types" }
+sgx_urts = { path = "crates/sgx_urts" }
