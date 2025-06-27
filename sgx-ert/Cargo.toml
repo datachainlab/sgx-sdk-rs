@@ -1,0 +1,20 @@
+[package]
+name         = "sgx-ert"
+version      = "1.2.0"
+authors      = ["The SGX-SDK-RS Authors"]
+repository   = "https://github.com/datachainlab/sgx-sdk-rs"
+license      = "Apache-2.0"
+description  = "Rust SGX SDK provides the ability to write Intel SGX applications in Rust Programming Language."
+edition      = "2021"
+
+[lib]
+name       = "sgx_ert"
+crate-type = ["rlib"]
+
+[features]
+default       = ["panic-handler"]
+panic-handler = []
+
+[dependencies]
+sgx-types = { path = "../sgx-types", default-features = false, features = ["trts", "tservice"] }
+sgx-alloc = { path = "../sgx-alloc" }

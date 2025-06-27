@@ -1,0 +1,11 @@
+[package]
+name        = "sgx-build"
+version     = "1.2.0"
+authors     = ["The SGX-SDK-RS Authors"]
+edition     = "2021"
+description = "Build utilities for SGX enclaves"
+repository  = "https://github.com/datachainlab/sgx-sdk-rs"
+license     = "Apache-2.0"
+
+[dependencies]
+cc = "1"

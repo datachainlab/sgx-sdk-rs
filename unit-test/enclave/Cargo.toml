@@ -1,0 +1,24 @@
+[package]
+name    = "Unittestsampleenclave"
+version = "1.0.0"
+authors = ["The Teaclave Authors", "The SGX-SDK-RS Authors"]
+edition = "2021"
+
+[lib]
+name       = "unittestsampleenclave"
+crate-type = ["staticlib"]
+
+[features]
+default = []
+
+[dependencies]
+sgx-types   = { path = "../../sgx-types", default-features = false }
+sgx-ert     = { path = "../../sgx-ert" }
+sgx-tcrypto = { path = "../../sgx-tcrypto" }
+sgx-trts    = { path = "../../sgx-trts" }
+sgx-tseal   = { path = "../../sgx-tseal" }
+sha2        = { version = "0.10", default-features = false }
+rand        = { version = "0.9", default-features = false, features = ["os_rng"] }
+
+[build-dependencies]
+sgx-build = { path = "../../sgx-build" }

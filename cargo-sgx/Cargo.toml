@@ -1,0 +1,19 @@
+[package]
+name        = "cargo-sgx"
+version     = "1.2.0"
+authors     = ["The SGX-SDK-RS Authors"]
+edition     = "2021"
+description = "Cargo subcommand for SGX enclave development"
+repository  = "https://github.com/datachainlab/sgx-sdk-rs"
+license     = "Apache-2.0"
+
+[[bin]]
+name = "cargo-sgx"
+path = "src/main.rs"
+
+[dependencies]
+clap      = { version = "4", features = ["derive"] }
+toml      = "0.8"
+anyhow    = "1"
+sgx-build = { path = "../sgx-build" }
+pathdiff  = "0.2"

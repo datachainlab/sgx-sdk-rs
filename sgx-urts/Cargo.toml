@@ -1,0 +1,21 @@
+[package]
+name         = "sgx-urts"
+version      = "1.2.0"
+authors      = ["The Teaclave Authors", "The SGX-SDK-RS Authors"]
+repository   = "https://github.com/datachainlab/sgx-sdk-rs"
+license      = "Apache-2.0"
+description  = "Rust SGX SDK provides the ability to write Intel SGX applications in Rust Programming Language."
+edition      = "2021"
+
+[lib]
+name       = "sgx_urts"
+crate-type = ["rlib"]
+
+[features]
+default     = []
+global_init = ["global_exit"]
+global_exit = ["global_init"]
+
+[dependencies]
+sgx-types = { path = "../sgx-types", default-features = false, features = ["urts"] }
+libc      = "0.2"

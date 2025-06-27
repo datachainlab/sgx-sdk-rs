@@ -1,0 +1,13 @@
+[package]
+name    = "app"
+version = "1.0.0"
+authors = ["The Teaclave Authors", "The SGX-SDK-RS Authors"]
+build   = "build.rs"
+edition = "2021"
+
+[dependencies]
+sgx-types = { path = "../../sgx-types", default-features = false, features = ["uae_service", "urts"] }
+sgx-urts  = { path = "../../sgx-urts" }
+
+[build-dependencies]
+sgx-build = { path = "../../sgx-build" }

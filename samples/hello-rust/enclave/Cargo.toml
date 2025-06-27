@@ -1,0 +1,19 @@
+[package]
+name    = "enclave"
+version = "0.1.0"
+authors = ["Your Name <you@example.com>"]
+edition = "2021"
+
+[lib]
+name       = "enclave"
+crate-type = ["staticlib"]
+
+[features]
+default = []
+
+[dependencies]
+sgx-ert   = { path = "../../../sgx-ert" }
+sgx-types = { path = "../../../sgx-types", default-features = false, features = ["tstdc", "trts", "tcrypto"] }
+
+[build-dependencies]
+sgx-build = { path = "../../../sgx-build" }

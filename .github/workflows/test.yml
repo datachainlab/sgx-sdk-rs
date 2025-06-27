@@ -1,0 +1,43 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    env:
+      SGX_MODE: SW
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly-2025-05-10
+          components: rust-src, rustfmt, clippy
+      - run: cargo install taplo-cli --version 0.10.0
+      - run: cargo install --path ./cargo-sgx
+      - run: sudo bash .github/scripts/install_sgx_sdk.sh /opt/intel
+      - run: source /opt/intel/sgxsdk/environment && make test
+      - name: Test cargo sgx init
+        run: |
+          source /opt/intel/sgxsdk/environment
+          # Create a test directory
+          mkdir -p test-init-project
+          cd test-init-project
+          # Initialize a new enclave project
+          cargo sgx init --path test-enclave --sgx-sdk-path ..
+          # Build the generated project
+          cd test-enclave
+          cargo sgx build --release
+          cargo clean
+          SGX_MODE=HW cargo sgx build --release
+          # Clean up
+          cd ../..
+          rm -rf test-init-project
+      - name: Lint
+        run: make check
+      - name: Check TOML formatting
+        run: make toml-check

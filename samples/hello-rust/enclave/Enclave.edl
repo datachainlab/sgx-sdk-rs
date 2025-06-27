@@ -1,0 +1,16 @@
+enclave {
+    trusted {
+        /* Add your trusted functions here */
+        public sgx_status_t ecall_sample(
+            [in, size=input_len] const char* input,
+            size_t input_len,
+            [out, size=output_max_len] char* output,
+            size_t output_max_len,
+            [out] size_t* output_len
+        );
+    };
+
+    untrusted {
+        /* Add your ocalls here */
+    };
+};

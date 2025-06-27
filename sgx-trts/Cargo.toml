@@ -1,0 +1,18 @@
+[package]
+name         = "sgx-trts"
+version      = "1.2.0"
+authors      = ["The Teaclave Authors", "The SGX-SDK-RS Authors"]
+repository   = "https://github.com/datachainlab/sgx-sdk-rs"
+license      = "Apache-2.0"
+description  = "Rust SGX SDK provides the ability to write Intel SGX applications in Rust Programming Language."
+edition      = "2021"
+
+[lib]
+name = "sgx_trts"
+
+[features]
+default = []
+mm      = ["sgx-types/mm"]
+
+[dependencies]
+sgx-types = { path = "../sgx-types", default-features = false, features = ["tstdc", "trts"] }
