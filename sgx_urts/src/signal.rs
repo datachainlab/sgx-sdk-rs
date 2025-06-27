@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License..
 
-use crate::sgx_types::{sgx_enclave_id_t, sgx_status_t};
+use sgx_types::{sgx_enclave_id_t, sgx_status_t};
 use libc::{self, c_int, c_void, sigaction, siginfo_t, sigset_t};
 use libc::{SA_SIGINFO, SIG_DFL, SIG_ERR, SIG_SETMASK};
 use std::collections::HashMap;
