@@ -15,7 +15,9 @@
 // specific language governing permissions and limitations
 // under the License..
 
-use libc::{self, c_int, c_uint, c_ulong, c_void, iovec, loff_t, off64_t, off_t, size_t, ssize_t, timespec};
+use libc::{
+    self, c_int, c_uint, c_ulong, c_void, iovec, loff_t, off64_t, off_t, size_t, ssize_t, timespec,
+};
 use std::io::Error;
 
 #[no_mangle]

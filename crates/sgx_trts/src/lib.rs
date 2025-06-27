@@ -63,7 +63,6 @@
 //!
 
 #![no_std]
-#![cfg_attr(target_env = "sgx", feature(rustc_private))]
 #![feature(allocator_api)]
 #![feature(specialization)]
 #![feature(vec_into_raw_parts)]
@@ -74,12 +73,6 @@
 #![allow(non_snake_case)]
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::derive_hash_xor_eq)]
-
-#[cfg(target_env = "sgx")]
-extern crate sgx_types;
-
-#[cfg(target_env = "sgx")]
-extern crate sgx_libc;
 
 extern crate alloc;
 
@@ -99,10 +92,6 @@ pub mod oom;
 pub mod trts;
 pub mod veh;
 
-#[cfg(not(target_env = "sgx"))]
-pub use sgx_libc as libc;
-
-#[cfg(target_env = "sgx")]
 pub mod libc {
     pub use sgx_libc::*;
 }

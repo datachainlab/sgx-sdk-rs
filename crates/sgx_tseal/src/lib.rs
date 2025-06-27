@@ -72,22 +72,12 @@
 //!
 
 #![no_std]
-#![cfg_attr(
-    all(target_env = "sgx", target_vendor = "mesalock"),
-    feature(rustc_private)
-)]
-
 #![allow(non_camel_case_types)]
 #![allow(unused_assignments)]
 #![allow(clippy::missing_safety_doc)]
 
 #[macro_use]
 extern crate alloc;
-
-extern crate sgx_tcrypto;
-extern crate sgx_trts;
-extern crate sgx_tse;
-extern crate sgx_types;
 
 mod seal;
 pub use self::seal::{SgxSealedData, SgxUnsealedData};

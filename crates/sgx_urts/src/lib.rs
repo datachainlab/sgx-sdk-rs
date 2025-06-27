@@ -18,9 +18,6 @@
 #![feature(linkage)]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-extern crate libc;
-extern crate sgx_types;
-
 pub mod asyncio;
 pub mod env;
 pub mod event;
