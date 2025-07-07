@@ -14,22 +14,22 @@ $ cargo install --git https://github.com/datachainlab/sgx-sdk-rs --branch main c
 
 ## Commands
 
-- `cargo sgx init` - Initialize a new SGX enclave project with template files
+- `cargo sgx new` - Create a new SGX enclave project with template files
 - `cargo sgx build` - Build an SGX enclave and generate the signed shared object
 
 ## Usage
 
-### Initialize a new SGX enclave project
+### Create a new SGX enclave project
 
 ```sh
 # Create an enclave in the default directory (./enclave)
-$ cargo sgx init
+$ cargo sgx new
 
-# Create an enclave with a custom name
-$ cargo sgx init --name my-enclave
+# Create an enclave in a specific directory
+$ cargo sgx new my-enclave
 
-# Create an enclave in a custom directory
-$ cargo sgx init --path my-project --name my-enclave
+# Create an enclave with a custom name in a specific directory
+$ cargo sgx new my-project --name my-enclave
 ```
 
 ### Build an SGX enclave

@@ -68,8 +68,8 @@ enum CargoCommand {
 enum SgxSubCommand {
     #[command(about = "Build SGX enclave shared object")]
     Build(SgxBuildArgs),
-    #[command(about = "Initialize SGX enclave project with template files")]
-    Init(SgxInitArgs),
+    #[command(about = "Create a new SGX enclave project with template files")]
+    New(SgxNewArgs),
 }
 
 #[derive(Parser)]
@@ -104,9 +104,8 @@ struct SgxBuildArgs {
 }
 
 #[derive(Parser)]
-struct SgxInitArgs {
-    /// Path to initialize the enclave project (default: ./enclave)
-    #[arg(short, long)]
+struct SgxNewArgs {
+    /// Path for the new enclave project (default: ./enclave)
     path: Option<PathBuf>,
 
     /// Enclave name (default: uses directory name)
@@ -139,8 +138,8 @@ fn main() -> ExitCode {
                     ExitCode::SUCCESS
                 }
             }
-            SgxSubCommand::Init(args) => {
-                if let Err(e) = run_sgx_init(args) {
+            SgxSubCommand::New(args) => {
+                if let Err(e) = run_sgx_new(args) {
                     eprintln!("Error: {e:#}");
                     ExitCode::FAILURE
                 } else {
@@ -357,7 +356,7 @@ fn create_version_script(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn run_sgx_init(args: SgxInitArgs) -> Result<()> {
+fn run_sgx_new(args: SgxNewArgs) -> Result<()> {
     let project_dir = args
         .path
         .unwrap_or_else(|| PathBuf::from(DEFAULT_ENCLAVE_NAME));
