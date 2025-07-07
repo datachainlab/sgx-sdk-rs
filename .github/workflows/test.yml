@@ -21,14 +21,14 @@ jobs:
       - run: cargo install --path ./cargo-sgx
       - run: sudo bash .github/scripts/install_sgx_sdk.sh /opt/intel
       - run: source /opt/intel/sgxsdk/environment && make test
-      - name: Test cargo sgx init
+      - name: Test cargo sgx new
         run: |
           source /opt/intel/sgxsdk/environment
           # Create a test directory
           mkdir -p test-init-project
           cd test-init-project
           # Initialize a new enclave project
-          cargo sgx init --path test-enclave --sgx-sdk-path ..
+          cargo sgx new test-enclave --sgx-sdk-path ..
           # Build the generated project
           cd test-enclave
           cargo sgx build --release

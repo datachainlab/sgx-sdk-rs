@@ -6,7 +6,7 @@ Rust SDK for [Intel SGX (Software Guard Extensions)](https://github.com/intel/li
 
 - **Rust SGX Libraries**: Core libraries for developing SGX enclaves
 - **cargo-sgx**: A Cargo subcommand that streamlines SGX enclave development by providing:
-  - Project initialization with templates (`cargo sgx init`)
+  - Project initialization with templates (`cargo sgx new`)
   - Automated enclave building command (`cargo sgx build`)
   - Seamless integration with the Rust toolchain using custom target `x86_64-unknown-unknown-sgx`
 
@@ -27,8 +27,8 @@ cargo install --path ./cargo-sgx
 ### Create Your First Enclave
 
 ```bash
-cargo sgx init
-cd enclave
+cargo sgx new my-enclave
+cd my-enclave
 cargo sgx build
 ```
 
