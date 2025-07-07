@@ -33,7 +33,7 @@ pub extern "C" fn ecall_sample(
     };
 
     // Process the input (example: echo back with prefix)
-    let result = format!("Hello from enclave: {}", input_string);
+    let result = format!("Hello from enclave: {input_string}");
     let result_bytes = result.as_bytes();
 
     // Check if output buffer is large enough
