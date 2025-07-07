@@ -52,7 +52,10 @@ pub fn test_seal_unseal() -> TestResult {
 
     unsafe impl ContiguousMemory for RandData {}
 
-    let mut data = RandData { key: 0x1234, ..Default::default() };
+    let mut data = RandData {
+        key: 0x1234,
+        ..Default::default()
+    };
 
     // Use sgx random instead of StdRng
     rsgx_read_rand(&mut data.rand).map_err(|_| "Failed to generate random data")?;

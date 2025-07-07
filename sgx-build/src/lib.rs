@@ -96,12 +96,35 @@ pub struct SgxBuilder {
 impl SgxBuilder {
     /// Get the target directory for EDL artifacts
     fn get_edl_target_dir() -> PathBuf {
-        let target_base = if let Ok(target_dir) = env::var("CARGO_TARGET_DIR") {
-            PathBuf::from(target_dir)
-        } else {
-            PathBuf::from("target")
-        };
-        target_base.join("edl")
+        // First, try CARGO_TARGET_DIR which is explicitly set
+        if let Ok(target_dir) = env::var("CARGO_TARGET_DIR") {
+            return PathBuf::from(target_dir).join("edl");
+        }
+
+        // Otherwise, require OUT_DIR to be set (should always be set in build.rs context)
+        let out_dir = env::var("OUT_DIR")
+            .expect("OUT_DIR not set. This function should only be called from build.rs");
+
+        let out_path = PathBuf::from(out_dir);
+
+        // Find the target directory by looking for a directory named "target"
+        // while traversing up the directory tree
+        let mut current_dir = out_path.as_path();
+        loop {
+            if let Some(file_name) = current_dir.file_name() {
+                if file_name == "target" {
+                    return current_dir.join("edl");
+                }
+            }
+
+            match current_dir.parent() {
+                Some(parent) => current_dir = parent,
+                None => panic!(
+                    "Could not find 'target' directory in OUT_DIR path: {}",
+                    out_path.display()
+                ),
+            }
+        }
     }
 
     /// Create a new EnclaveBuilder with default settings from environment
