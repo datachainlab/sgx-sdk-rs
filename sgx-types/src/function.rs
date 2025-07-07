@@ -22,7 +22,7 @@ use crate::*;
 // Constants from sgx-trts
 pub const LAYOUT_ENTRY_NUM: usize = 43;
 
-#[cfg(feature = "tstdc")]
+#[cfg(all(feature = "tstdc", target_env = "sgx"))]
 #[link(name = "sgx_tstdc", kind = "static")]
 extern "C" {
     //
@@ -107,7 +107,7 @@ extern "C" {
     pub fn sgx_alloc_rsrv_mem_ex(desired_addr: *const c_void, length: size_t) -> *mut c_void;
 }
 
-#[cfg(feature = "tservice")]
+#[cfg(all(feature = "tservice", target_env = "sgx"))]
 #[cfg_attr(
     not(feature = "simulation"),
     link(name = "sgx_tservice", kind = "static")
@@ -278,7 +278,7 @@ extern "C" {
     ) -> *mut c_void;
 }
 
-#[cfg(feature = "tcrypto")]
+#[cfg(all(feature = "tcrypto", target_env = "sgx"))]
 #[link(name = "sgx_tcrypto", kind = "static")]
 extern "C" {
     //
@@ -619,7 +619,7 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[cfg(feature = "tkey_exchange")]
+#[cfg(all(feature = "tkey_exchange", target_env = "sgx"))]
 #[link(name = "sgx_tkey_exchange", kind = "static")]
 extern "C" {
     //
@@ -650,7 +650,7 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[cfg(feature = "trts")]
+#[cfg(all(feature = "trts", target_env = "sgx"))]
 #[cfg_attr(not(feature = "simulation"), link(name = "sgx_trts", kind = "static"))]
 #[cfg_attr(feature = "simulation", link(name = "sgx_trts_sim", kind = "static"))]
 extern "C" {
@@ -787,7 +787,7 @@ pub struct thread_data_t {
 }
 
 /* intel sgx sdk 2.18 */
-#[cfg(feature = "mm")]
+#[cfg(all(feature = "mm", target_env = "sgx"))]
 #[link(name = "sgx_mm", kind = "static")]
 extern "C" {
     pub fn sgx_mm_alloc(
@@ -813,7 +813,7 @@ extern "C" {
     pub fn sgx_mm_modify_type(addr: *const c_void, length: size_t, page_type: int32_t) -> int32_t;
 }
 
-#[cfg(feature = "epid")]
+#[cfg(all(feature = "epid", not(target_env = "sgx")))]
 #[link(name = "sgx_epid", kind = "dylib")]
 extern "C" {
     //
@@ -863,7 +863,7 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[cfg(feature = "launch")]
+#[cfg(all(feature = "launch", not(target_env = "sgx")))]
 #[link(name = "sgx_launch", kind = "dylib")]
 extern "C" {
     //
@@ -880,7 +880,7 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[cfg(feature = "platform")]
+#[cfg(all(feature = "platform", not(target_env = "sgx")))]
 #[link(name = "sgx_platform", kind = "dylib")]
 extern "C" {
     //
@@ -889,7 +889,7 @@ extern "C" {
     pub fn sgx_get_ps_cap(p_sgx_ps_cap: *mut sgx_ps_cap_t) -> sgx_status_t;
 }
 
-#[cfg(feature = "quote_ex")]
+#[cfg(all(feature = "quote_ex", not(target_env = "sgx")))]
 #[link(name = "sgx_quote_ex", kind = "dylib")]
 extern "C" {
     //
@@ -931,7 +931,7 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[cfg(feature = "uae_service")]
+#[cfg(all(feature = "uae_service", not(target_env = "sgx")))]
 #[link(name = "sgx_uae_service", kind = "dylib")]
 extern "C" {
     //
@@ -943,7 +943,7 @@ extern "C" {
     //
 }
 
-#[cfg(feature = "ukey_exchange")]
+#[cfg(all(feature = "ukey_exchange", not(target_env = "sgx")))]
 #[link(name = "sgx_ukey_exchange", kind = "dylib")]
 extern "C" {
     //
@@ -989,7 +989,7 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[cfg(feature = "urts")]
+#[cfg(all(feature = "urts", not(target_env = "sgx")))]
 #[cfg_attr(not(feature = "simulation"), link(name = "sgx_urts", kind = "dylib"))]
 #[cfg_attr(feature = "simulation", link(name = "sgx_urts_sim", kind = "dylib"))]
 extern "C" {
@@ -1055,7 +1055,7 @@ extern "C" {
 }
 
 /* intel sgx sdk 1.9 */
-#[cfg(feature = "tprotected_fs")]
+#[cfg(all(feature = "tprotected_fs", target_env = "sgx"))]
 #[link(name = "sgx_tprotected_fs", kind = "static")]
 extern "C" {
     //
@@ -1094,7 +1094,7 @@ extern "C" {
 }
 
 /* intel sgx sdk 2.0 */
-#[cfg(feature = "capable")]
+#[cfg(all(feature = "capable", not(target_env = "sgx")))]
 #[link(name = "sgx_capable", kind = "dylib")]
 extern "C" {
     //
@@ -1105,7 +1105,7 @@ extern "C" {
     pub fn sgx_cap_get_status(sgx_device_status: *mut sgx_device_status_t) -> sgx_status_t;
 }
 
-#[cfg(feature = "pce_wrapper")]
+#[cfg(all(feature = "pce_wrapper", not(target_env = "sgx")))]
 #[link(name = "sgx_pce_wrapper", kind = "dylib")]
 extern "C" {
     //
@@ -1144,7 +1144,7 @@ extern "C" {
     ) -> sgx_pce_error_t;
 }
 
-#[cfg(feature = "dcap_ql")]
+#[cfg(all(feature = "dcap_ql", not(target_env = "sgx")))]
 #[link(name = "sgx_dcap_ql", kind = "dylib")]
 extern "C" {
     //
@@ -1167,7 +1167,7 @@ extern "C" {
     ) -> sgx_quote3_error_t;
 }
 
-#[cfg(feature = "dcap_quoteprov")]
+#[cfg(all(feature = "dcap_quoteprov", not(target_env = "sgx")))]
 #[link(name = "dcap_quoteprov", kind = "dylib")]
 extern "C" {
     //
@@ -1242,7 +1242,7 @@ extern "C" {
     pub fn sgx_qpl_global_cleanup() -> sgx_quote3_error_t;
 }
 
-#[cfg(feature = "default_qcnl_wrapper")]
+#[cfg(all(feature = "default_qcnl_wrapper", not(target_env = "sgx")))]
 #[link(name = "sgx_default_qcnl_wrapper", kind = "dylib")]
 extern "C" {
     //
@@ -1326,7 +1326,7 @@ extern "C" {
     pub fn sgx_qcnl_global_cleanup() -> sgx_qcnl_error_t;
 }
 
-#[cfg(feature = "dcap_quoteverify")]
+#[cfg(all(feature = "dcap_quoteverify", not(target_env = "sgx")))]
 #[link(name = "dcap_quoteverify", kind = "dylib")]
 extern "C" {
     //
@@ -1423,7 +1423,7 @@ extern "C" {
 }
 
 /* intel DCAP 1.7 */
-#[cfg(feature = "dcap_tvl")]
+#[cfg(all(feature = "dcap_tvl", target_env = "sgx"))]
 #[link(name = "sgx_dcap_tvl", kind = "static")]
 extern "C" {
     //
@@ -1443,7 +1443,7 @@ extern "C" {
 }
 
 /* intel DCAP 1.15 */
-#[cfg(feature = "tdx_attest")]
+#[cfg(all(feature = "tdx_attest", target_env = "sgx"))]
 #[link(name = "libtdx_attest", kind = "dylib")]
 extern "C" {
     //
@@ -1475,7 +1475,7 @@ extern "C" {
 }
 
 /* intel sgx sdk 2.16 */
-#[cfg(feature = "ttls")]
+#[cfg(all(feature = "ttls", target_env = "sgx"))]
 #[link(name = "sgx_ttls", kind = "static")]
 extern "C" {
     //
@@ -1504,7 +1504,7 @@ extern "C" {
 }
 
 /* intel sgx sdk 2.16 */
-#[cfg(feature = "utls")]
+#[cfg(all(feature = "utls", not(target_env = "sgx")))]
 #[link(name = "sgx_utls", kind = "dylib")]
 extern "C" {
     //
