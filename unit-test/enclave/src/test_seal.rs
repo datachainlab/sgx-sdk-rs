@@ -52,8 +52,7 @@ pub fn test_seal_unseal() -> TestResult {
 
     unsafe impl ContiguousMemory for RandData {}
 
-    let mut data = RandData::default();
-    data.key = 0x1234;
+    let mut data = RandData { key: 0x1234, ..Default::default() };
 
     // Use sgx random instead of StdRng
     rsgx_read_rand(&mut data.rand).map_err(|_| "Failed to generate random data")?;
@@ -105,7 +104,7 @@ pub fn test_mac_aadata_slice() -> TestResult {
     if unsealed_data.get_decrypt_txt() != &text {
         return Err("Decrypted text verification failed");
     }
-    if unsealed_data.get_additional_txt() != &aad_data {
+    if unsealed_data.get_additional_txt() != aad_data {
         return Err("AAD verification failed");
     }
 

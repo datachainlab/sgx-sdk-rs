@@ -20,16 +20,16 @@ use crate::TestResult;
 use alloc::string::String;
 use sgx_tcrypto::*;
 
-static HASH_TEST_VEC: &'static [&'static str] = &[
-    &"abc",
-    &"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
-    &"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+static HASH_TEST_VEC: &[&str] = &[
+    "abc",
+    "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
+    "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
 ];
 
-static HASH_SHA256_TRUTH: &'static [&'static str] = &[
-    &"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    &"248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
-    &"cf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1",
+static HASH_SHA256_TRUTH: &[&str] = &[
+    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
+    "cf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1",
 ];
 
 pub fn test_rsgx_sha256_slice() -> TestResult {
