@@ -26,7 +26,7 @@ clippy:
 	done
 
 .PHONY: check
-check: fmt clippy
+check: fmt-check clippy
 
 .PHONY: test
 test:
