@@ -22,13 +22,14 @@ pub use sgx_types;
 #[global_allocator]
 static ALLOC: sgx_alloc::System = sgx_alloc::System;
 
-#[cfg(feature = "panic-handler")]
+#[cfg(all(feature = "panic-handler", target_env = "sgx"))]
 #[allow(unused_variables)]
 #[panic_handler]
 fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
     sgx_abort();
 }
 
+#[cfg(target_env = "sgx")]
 #[lang = "eh_personality"]
 fn rust_eh_personality() {}
 
@@ -65,6 +66,7 @@ pub fn take_alloc_error_hook() -> fn(Layout) {
 
 fn default_alloc_error_hook(_layout: Layout) {}
 
+#[cfg(target_env = "sgx")]
 #[alloc_error_handler]
 pub fn rust_oom(layout: Layout) -> ! {
     let hook = HOOK.load(Ordering::SeqCst);
@@ -77,6 +79,7 @@ pub fn rust_oom(layout: Layout) -> ! {
     sgx_abort();
 }
 
+#[cfg(target_env = "sgx")]
 fn sgx_abort() -> ! {
     unsafe { sgx_types::abort() }
 }
