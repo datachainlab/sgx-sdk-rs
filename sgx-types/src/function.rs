@@ -22,8 +22,8 @@ use crate::*;
 // Constants from sgx-trts
 pub const LAYOUT_ENTRY_NUM: usize = 43;
 
-#[cfg(all(feature = "tstdc", target_env = "sgx"))]
-#[link(name = "sgx_tstdc", kind = "static")]
+#[cfg(feature = "tstdc")]
+#[cfg_attr(target_env = "sgx", link(name = "sgx_tstdc", kind = "static"))]
 extern "C" {
     //
     // sgx_cpuid.h
@@ -107,13 +107,13 @@ extern "C" {
     pub fn sgx_alloc_rsrv_mem_ex(desired_addr: *const c_void, length: size_t) -> *mut c_void;
 }
 
-#[cfg(all(feature = "tservice", target_env = "sgx"))]
+#[cfg(feature = "tservice")]
 #[cfg_attr(
-    not(feature = "simulation"),
+    all(target_env = "sgx", not(feature = "simulation")),
     link(name = "sgx_tservice", kind = "static")
 )]
 #[cfg_attr(
-    feature = "simulation",
+    all(target_env = "sgx", feature = "simulation"),
     link(name = "sgx_tservice_sim", kind = "static")
 )]
 extern "C" {
@@ -278,8 +278,8 @@ extern "C" {
     ) -> *mut c_void;
 }
 
-#[cfg(all(feature = "tcrypto", target_env = "sgx"))]
-#[link(name = "sgx_tcrypto", kind = "static")]
+#[cfg(feature = "tcrypto")]
+#[cfg_attr(target_env = "sgx", link(name = "sgx_tcrypto", kind = "static"))]
 extern "C" {
     //
     // sgx_tcrypto.h
@@ -619,8 +619,8 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[cfg(all(feature = "tkey_exchange", target_env = "sgx"))]
-#[link(name = "sgx_tkey_exchange", kind = "static")]
+#[cfg(feature = "tkey_exchange")]
+#[cfg_attr(target_env = "sgx", link(name = "sgx_tkey_exchange", kind = "static"))]
 extern "C" {
     //
     // sgx_tkey_exchange.h
@@ -650,9 +650,15 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[cfg(all(feature = "trts", target_env = "sgx"))]
-#[cfg_attr(not(feature = "simulation"), link(name = "sgx_trts", kind = "static"))]
-#[cfg_attr(feature = "simulation", link(name = "sgx_trts_sim", kind = "static"))]
+#[cfg(feature = "trts")]
+#[cfg_attr(
+    all(target_env = "sgx", not(feature = "simulation")),
+    link(name = "sgx_trts", kind = "static")
+)]
+#[cfg_attr(
+    all(target_env = "sgx", feature = "simulation"),
+    link(name = "sgx_trts_sim", kind = "static")
+)]
 extern "C" {
 
     pub fn abort() -> !;
@@ -787,8 +793,8 @@ pub struct thread_data_t {
 }
 
 /* intel sgx sdk 2.18 */
-#[cfg(all(feature = "mm", target_env = "sgx"))]
-#[link(name = "sgx_mm", kind = "static")]
+#[cfg(feature = "mm")]
+#[cfg_attr(target_env = "sgx", link(name = "sgx_mm", kind = "static"))]
 extern "C" {
     pub fn sgx_mm_alloc(
         addr: *const c_void,
@@ -1055,8 +1061,8 @@ extern "C" {
 }
 
 /* intel sgx sdk 1.9 */
-#[cfg(all(feature = "tprotected_fs", target_env = "sgx"))]
-#[link(name = "sgx_tprotected_fs", kind = "static")]
+#[cfg(feature = "tprotected_fs")]
+#[cfg_attr(target_env = "sgx", link(name = "sgx_tprotected_fs", kind = "static"))]
 extern "C" {
     //
     // sgx_tprotected_fs.h
@@ -1423,8 +1429,8 @@ extern "C" {
 }
 
 /* intel DCAP 1.7 */
-#[cfg(all(feature = "dcap_tvl", target_env = "sgx"))]
-#[link(name = "sgx_dcap_tvl", kind = "static")]
+#[cfg(feature = "dcap_tvl")]
+#[cfg_attr(target_env = "sgx", link(name = "sgx_dcap_tvl", kind = "static"))]
 extern "C" {
     //
     // sgx_dcap_tvl.h
@@ -1443,8 +1449,8 @@ extern "C" {
 }
 
 /* intel DCAP 1.15 */
-#[cfg(all(feature = "tdx_attest", target_env = "sgx"))]
-#[link(name = "libtdx_attest", kind = "dylib")]
+#[cfg(feature = "tdx_attest")]
+#[cfg_attr(target_env = "sgx", link(name = "libtdx_attest", kind = "dylib"))]
 extern "C" {
     //
     // tdx_attes.h
@@ -1475,8 +1481,8 @@ extern "C" {
 }
 
 /* intel sgx sdk 2.16 */
-#[cfg(all(feature = "ttls", target_env = "sgx"))]
-#[link(name = "sgx_ttls", kind = "static")]
+#[cfg(feature = "ttls")]
+#[cfg_attr(target_env = "sgx", link(name = "sgx_ttls", kind = "static"))]
 extern "C" {
     //
     // sgx_ttls.h

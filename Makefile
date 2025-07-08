@@ -15,7 +15,7 @@ fmt-check:
 .PHONY: clippy
 clippy:
 	@find . -name Cargo.toml -not -path "./target/*" -exec dirname {} \; | while read dir; do \
-		if echo "$$dir" | grep -E -q "(enclave$$|sgx-ert|sgx-trts|sgx-tcrypto|sgx-tse|sgx-tseal)"; then \
+		if echo "$$dir" | grep -E -q "(enclave$$)"; then \
 			echo "Running clippy on $$dir with SGX target..."; \
 			TARGET_SPEC="$$(pwd)/unit-test/enclave/x86_64-unknown-unknown-sgx.json"; \
 			(cd "$$dir" && cargo clippy -Z build-std=core,alloc --target="$$TARGET_SPEC" --all-features -- -D warnings) || exit 1; \
