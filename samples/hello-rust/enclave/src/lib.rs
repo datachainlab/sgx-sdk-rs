@@ -32,8 +32,38 @@ pub extern "C" fn ecall_sample(
         Err(_) => return sgx_status_t::SGX_ERROR_INVALID_PARAMETER,
     };
 
-    // Process the input (example: echo back with prefix)
-    let result = format!("Hello from enclave: {input_string}");
+    let result = match input_string.as_str() {
+        "cpuid" => {
+            let id = unsafe {
+                use core::arch::x86_64::__cpuid;
+                __cpuid(0)
+            };
+            format!("Executed CPUID: {id:?}")
+        }
+        "syscall" => {
+            unsafe {
+                core::arch::asm!("syscall", options(nostack, preserves_flags));
+            }
+            String::from("Executed SYSCALL")
+        }
+        "sysenter" => {
+            unsafe {
+                core::arch::asm!("sysenter", options(nostack, preserves_flags));
+            }
+            String::from("Executed SYSENTER")
+        }
+        "int80" => {
+            unsafe {
+                core::arch::asm!("int 0x80", options(nostack, preserves_flags));
+            }
+            String::from("Executed INT 0x80")
+        }
+        _ => {
+            // normal execution
+            format!("Hello from enclave: {input_string}")
+        }
+    };
+
     let result_bytes = result.as_bytes();
 
     // Check if output buffer is large enough

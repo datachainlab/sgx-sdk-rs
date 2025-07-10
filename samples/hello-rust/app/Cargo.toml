@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 sgx-types = { path = "../../../sgx-types", default-features = false, features = ["uae_service", "urts"] }
-sgx-urts  = { path = "../../../sgx-urts" }
+sgx-urts  = { path = "../../../sgx-urts", features = ["simulate_utils"] }
 
 [build-dependencies]
 sgx-build = { path = "../../../sgx-build" }

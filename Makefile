@@ -29,10 +29,26 @@ clippy:
 check: fmt-check clippy
 
 .PHONY: test
-test:
-	@echo "Building and running unit tests..."
+test: enclave-test untrusted-test
+	@echo "All tests completed successfully!"
+
+.PHONY: enclave-test
+enclave-test:
+	@echo "Building and running enclave unit tests..."
 	@cd unit-test && make clean all
 	@cd unit-test/bin && ./app
+
+.PHONY: untrusted-test
+untrusted-test:
+	@echo "Running untrusted crate tests..."
+	@echo "Testing sgx-types..."
+	@cd sgx-types && cargo test --features urts
+	@echo "Testing sgx-urts..."
+	@cd sgx-urts && cargo test --features simulate_utils
+	@echo "Testing sgx-build..."
+	@cd sgx-build && cargo test
+	@echo "Testing cargo-sgx..."
+	@cd cargo-sgx && cargo test
 
 .PHONY: toml-fmt
 toml-fmt:
