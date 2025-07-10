@@ -77,6 +77,9 @@ use test_types::*;
 mod test_crate;
 use test_crate::*;
 
+mod test_signal;
+use test_signal::*;
+
 // Simple test result type
 type TestResult = Result<(), &'static str>;
 
@@ -279,6 +282,60 @@ pub extern "C" fn test_main_entrance() -> size_t {
         Err(e) => {
             println!("failed: {:?}", e);
             failed += 1;
+        }
+    }
+
+    // Signal handler tests (only in simulation mode)
+    #[cfg(sgx_sim)]
+    {
+        println!("\nRunning signal handler tests (simulation mode only):");
+
+        print!("test_cpuid_trap ... ");
+        match test_cpuid_trap() {
+            Ok(_) => {
+                println!("ok");
+                passed += 1;
+            }
+            Err(e) => {
+                println!("failed: {:?}", e);
+                failed += 1;
+            }
+        }
+
+        print!("test_syscall_trap ... ");
+        match test_syscall_trap() {
+            Ok(_) => {
+                println!("ok");
+                passed += 1;
+            }
+            Err(e) => {
+                println!("failed: {:?}", e);
+                failed += 1;
+            }
+        }
+
+        print!("test_sysenter_trap ... ");
+        match test_sysenter_trap() {
+            Ok(_) => {
+                println!("ok");
+                passed += 1;
+            }
+            Err(e) => {
+                println!("failed: {:?}", e);
+                failed += 1;
+            }
+        }
+
+        print!("test_int80_trap ... ");
+        match test_int80_trap() {
+            Ok(_) => {
+                println!("ok");
+                passed += 1;
+            }
+            Err(e) => {
+                println!("failed: {:?}", e);
+                failed += 1;
+            }
         }
     }
 
