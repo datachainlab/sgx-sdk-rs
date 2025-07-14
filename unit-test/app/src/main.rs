@@ -46,8 +46,12 @@ fn sigtrap_callback(_sig: libc::c_int, _info: *mut libc::siginfo_t, context: *mu
         let rip = gregs[16]; // REG_RIP = 16 on x86_64
 
         // RIP points after INT3+identifier, so we need to check RIP-1 for the identifier
-        let identifier = *((rip - 1) as *const u8);
-        match identifier {
+        let id = *((rip - 1) as *const u8);
+
+        // Extract instruction kind from ID (lower 4 bits)
+        let kind = id & 0x0F;
+
+        match kind {
             0x01 => {
                 let count = CPUID_TRAP_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
                 let msg = format!("[App Callback] CPUID trapped, count: {count}\n");

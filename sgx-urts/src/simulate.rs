@@ -16,8 +16,10 @@
 // under the License.
 
 use crate::SgxEnclave;
+use iced_x86::{Code, Decoder, DecoderOptions};
 use libc::{sigaction, siginfo_t, SA_NODEFER, SA_RESTART, SA_SIGINFO, SIGTRAP};
-use object::{Object, ObjectSection, SectionKind};
+use object::elf::PF_X;
+use object::{Object, ObjectSegment};
 use sgx_types::*;
 use std::mem;
 use std::ptr;
@@ -27,11 +29,27 @@ use tracing::{debug, info};
 // Store the original SIGTRAP handler that was installed before ours
 static ORIGINAL_SIGTRAP_HANDLER: Mutex<Option<sigaction>> = Mutex::new(None);
 
-// Instruction identifiers
-const INST_ID_CPUID: u8 = 0x01;
-const INST_ID_SYSCALL: u8 = 0x02;
-const INST_ID_SYSENTER: u8 = 0x03;
-const INST_ID_INT80: u8 = 0x04;
+// Instruction identifiers (lower 4 bits)
+const INST_KIND_CPUID: u8 = 0x01;
+const INST_KIND_SYSCALL: u8 = 0x02;
+const INST_KIND_SYSENTER: u8 = 0x03;
+const INST_KIND_INT80: u8 = 0x04;
+
+// Helper function to create ID with length information
+// Upper 4 bits: (length - 1), Lower 4 bits: instruction kind
+const fn make_id(kind: u8, len: u8) -> u8 {
+    ((len - 1) << 4) | (kind & 0x0F)
+}
+
+// Helper function to extract length from ID
+const fn get_length_from_id(id: u8) -> u8 {
+    (id >> 4) + 1
+}
+
+// Helper function to extract kind from ID
+const fn get_kind_from_id(id: u8) -> u8 {
+    id & 0x0F
+}
 
 // User-defined callback type
 pub type SigtrapCallback = fn(sig: libc::c_int, info: *mut siginfo_t, context: *mut libc::c_void);
@@ -55,83 +73,110 @@ pub fn patch_enclave_binary(binary_data: &[u8]) -> Result<Vec<u8>, String> {
     let obj =
         object::File::parse(binary_data).map_err(|e| format!("Failed to parse binary: {e}"))?;
 
-    let mut cpuid_patches = Vec::new();
-    let mut syscall_patches = Vec::new();
-    let mut sysenter_patches = Vec::new();
-    let mut int80_patches = Vec::new();
+    let mut total_patches = 0;
+    let mut cpuid_count = 0;
+    let mut syscall_count = 0;
+    let mut sysenter_count = 0;
+    let mut int80_count = 0;
 
-    // Scan executable sections
-    for sect in obj.sections() {
-        if sect.kind() != SectionKind::Text {
+    // Scan all executable segments (not just .text sections)
+    for segment in obj.segments() {
+        // Check if segment is executable
+        let flags = segment.flags();
+        if match flags {
+            object::SegmentFlags::Elf { p_flags } => p_flags & PF_X == 0,
+            object::SegmentFlags::MachO { .. } => false, // Not supported for now
+            object::SegmentFlags::Coff { .. } => false,  // Not supported for now
+            _ => true,                                   // Skip unknown formats
+        } {
             continue;
         }
 
-        let name = sect.name().unwrap_or("<unnamed>");
+        let (file_offset, file_size) = segment.file_range();
+        let segment_data = &binary_data[file_offset as usize..(file_offset + file_size) as usize];
+        let segment_address = segment.address();
 
-        if let Some((off, size)) = sect.file_range() {
-            let start = off as usize;
-            let end = (off + size) as usize;
+        debug!(
+            "Scanning executable segment at file offset {:#x}, virtual address {:#x}, size {:#x}",
+            file_offset, segment_address, file_size
+        );
 
-            debug!("Scanning section '{}' [{:#x}..{:#x}]", name, start, end);
+        // Create x86-64 decoder with the segment's virtual address
+        let mut decoder = Decoder::with_ip(64, segment_data, segment_address, DecoderOptions::NONE);
 
-            // Search for prohibited instruction patterns
-            for i in start..end.saturating_sub(1) {
-                // CPUID: 0F A2
-                if patched_binary[i] == 0x0F && patched_binary[i + 1] == 0xA2 {
-                    debug!("Found CPUID at offset {:#x}", i);
-                    cpuid_patches.push(i);
+        // Decode all instructions in the segment
+        while decoder.can_decode() {
+            let instruction = decoder.decode();
+
+            // Determine if this is a prohibited instruction
+            let (kind, needs_patch) = match instruction.code() {
+                Code::Cpuid => (INST_KIND_CPUID, true),
+                Code::Syscall => (INST_KIND_SYSCALL, true),
+                Code::Sysenter => (INST_KIND_SYSENTER, true),
+                // For INT 0x80, we need to check the immediate value
+                Code::Int_imm8 => {
+                    if instruction.immediate8() == 0x80 {
+                        (INST_KIND_INT80, true)
+                    } else {
+                        (0, false)
+                    }
                 }
-                // SYSCALL: 0F 05
-                else if patched_binary[i] == 0x0F && patched_binary[i + 1] == 0x05 {
-                    debug!("Found SYSCALL at offset {:#x}", i);
-                    syscall_patches.push(i);
-                }
-                // SYSENTER: 0F 34
-                else if patched_binary[i] == 0x0F && patched_binary[i + 1] == 0x34 {
-                    debug!("Found SYSENTER at offset {:#x}", i);
-                    sysenter_patches.push(i);
-                }
-                // INT 0x80: CD 80
-                else if patched_binary[i] == 0xCD && patched_binary[i + 1] == 0x80 {
-                    debug!("Found INT 0x80 at offset {:#x}", i);
-                    int80_patches.push(i);
-                }
+                _ => (0, false),
+            };
+
+            if !needs_patch {
+                continue;
+            }
+
+            // Calculate file offset for this instruction
+            let instruction_rva = instruction.ip() - segment_address;
+            let file_position = file_offset as usize + instruction_rva as usize;
+            let instruction_len = instruction.len() as u8;
+
+            // Create ID with length information
+            let id = make_id(kind, instruction_len);
+
+            debug!(
+                "Found {} at virtual address {:#x}, file offset {:#x}, length {} bytes",
+                match kind {
+                    INST_KIND_CPUID => "CPUID",
+                    INST_KIND_SYSCALL => "SYSCALL",
+                    INST_KIND_SYSENTER => "SYSENTER",
+                    INST_KIND_INT80 => "INT 0x80",
+                    _ => "UNKNOWN",
+                },
+                instruction.ip(),
+                file_position,
+                instruction_len
+            );
+
+            // Patch the instruction: INT3 + ID + NOPs
+            patched_binary[file_position] = 0xCC; // INT3
+            patched_binary[file_position + 1] = id; // ID with length info
+
+            // Fill remaining bytes with NOPs
+            for i in 2..instruction_len as usize {
+                patched_binary[file_position + i] = 0x90; // NOP
+            }
+
+            // Update counters
+            total_patches += 1;
+            match kind {
+                INST_KIND_CPUID => cpuid_count += 1,
+                INST_KIND_SYSCALL => syscall_count += 1,
+                INST_KIND_SYSENTER => sysenter_count += 1,
+                INST_KIND_INT80 => int80_count += 1,
+                _ => {}
             }
         }
     }
 
-    info!("Found instructions to patch:");
-    info!("  CPUID: {}", cpuid_patches.len());
-    info!("  SYSCALL: {}", syscall_patches.len());
-    info!("  SYSENTER: {}", sysenter_patches.len());
-    info!("  INT 0x80: {}", int80_patches.len());
+    info!("Patching completed. Total patches: {}", total_patches);
+    info!("  CPUID: {}", cpuid_count);
+    info!("  SYSCALL: {}", syscall_count);
+    info!("  SYSENTER: {}", sysenter_count);
+    info!("  INT 0x80: {}", int80_count);
 
-    // Apply patches
-    for &i in &cpuid_patches {
-        patched_binary[i] = 0xCC; // INT3
-        patched_binary[i + 1] = INST_ID_CPUID; // Identifier
-        debug!("Patched CPUID at {:#x} -> INT3 + 0x01", i);
-    }
-
-    for &i in &syscall_patches {
-        patched_binary[i] = 0xCC; // INT3
-        patched_binary[i + 1] = INST_ID_SYSCALL; // Identifier
-        debug!("Patched SYSCALL at {:#x} -> INT3 + 0x02", i);
-    }
-
-    for &i in &sysenter_patches {
-        patched_binary[i] = 0xCC; // INT3
-        patched_binary[i + 1] = INST_ID_SYSENTER; // Identifier
-        debug!("Patched SYSENTER at {:#x} -> INT3 + 0x03", i);
-    }
-
-    for &i in &int80_patches {
-        patched_binary[i] = 0xCC; // INT3
-        patched_binary[i + 1] = INST_ID_INT80; // Identifier
-        debug!("Patched INT 0x80 at {:#x} -> INT3 + 0x04", i);
-    }
-
-    info!("Patching completed");
     Ok(patched_binary)
 }
 
@@ -166,24 +211,30 @@ extern "C" fn sigtrap_chain_handler(
     let instruction = unsafe { *instruction_ptr };
     if instruction == 0xCC {
         // INT3 detected, read identifier byte
-        let identifier = unsafe { *(rip as *const u8) };
-        let instruction_name = match identifier {
-            INST_ID_CPUID => "CPUID",
-            INST_ID_SYSCALL => "SYSCALL",
-            INST_ID_SYSENTER => "SYSENTER",
-            INST_ID_INT80 => "INT 0x80",
+        let id = unsafe { *(rip as *const u8) };
+
+        // Extract instruction kind and length from ID
+        let kind = get_kind_from_id(id);
+        let length = get_length_from_id(id);
+
+        let instruction_name = match kind {
+            INST_KIND_CPUID => "CPUID",
+            INST_KIND_SYSCALL => "SYSCALL",
+            INST_KIND_SYSENTER => "SYSENTER",
+            INST_KIND_INT80 => "INT 0x80",
             _ => "UNKNOWN",
         };
 
         log_to_stderr(&format!(
-            "[SGX-URTS TRAP] Prohibited instruction detected: {instruction_name} (identifier: {identifier:#x})\n"
+            "[SGX-URTS TRAP] Prohibited instruction detected: {instruction_name} (id: {id:#x}, length: {length})\n"
         ));
 
-        // Skip identifier byte
+        // Skip the entire patched instruction (length includes INT3)
+        // Since RIP already points to the ID byte (after INT3), we need to skip (length - 1) more bytes
         unsafe {
             let uc = context as *mut libc::ucontext_t;
             let gregs = &mut (*uc).uc_mcontext.gregs;
-            gregs[libc::REG_RIP as usize] += 1;
+            gregs[libc::REG_RIP as usize] += (length - 1) as i64;
         }
     } else {
         log_to_stderr(&format!(
@@ -596,67 +647,20 @@ mod tests {
     }
 
     #[test]
-    fn test_patch_enclave_binary() {
-        // Minimal ELF64 binary with .text section containing prohibited instructions
-        #[rustfmt::skip]
-        let elf_binary = vec![
-            // ELF Header (64 bytes)
-            0x7f, b'E', b'L', b'F', 0x02, 0x01, 0x01, 0x00,  // Magic, 64-bit, LE, v1
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Padding
-            0x01, 0x00, 0x3e, 0x00, 0x01, 0x00, 0x00, 0x00,  // ET_REL, x86-64, v1
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Entry
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // PHoff
-            0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // SHoff = 64
-            0x00, 0x00, 0x00, 0x00,                          // Flags
-            0x40, 0x00,                                      // EHsize = 64
-            0x00, 0x00,                                      // PHentsize
-            0x00, 0x00,                                      // PHnum
-            0x40, 0x00,                                      // SHentsize = 64
-            0x03, 0x00,                                      // SHnum = 3
-            0x02, 0x00,                                      // SHstrndx = 2
-            
-            // Section headers at 0x40
-            // [0] NULL
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            
-            // [1] .text
-            0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,  // Name=1, Type=PROGBITS
-            0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Flags=AX
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Addr
-            0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Offset=256
-            0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Size=14
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Link, Info
-            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Align=1
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Entsize
-            
-            // [2] .shstrtab
-            0x07, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,  // Name=7, Type=STRTAB
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Flags
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Addr
-            0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Offset=272
-            0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Size=17
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Link, Info
-            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Align=1
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Entsize
-            
-            // .text content at 0x100
-            0x90, 0x0F, 0xA2,  // NOP, CPUID
-            0x90, 0x0F, 0x05,  // NOP, SYSCALL
-            0x90, 0x0F, 0x34,  // NOP, SYSENTER
-            0x90, 0xCD, 0x80,  // NOP, INT 0x80
-            0x90, 0xC3,        // NOP, RET
-            
-            // .shstrtab content at 0x110
-            0x00, b'.', b't', b'e', b'x', b't', 0x00,
-            b'.', b's', b'h', b's', b't', b'r', b't', b'a', b'b', 0x00,
-        ];
+    fn test_patch_enclave_binary_basic() {
+        // Create a minimal ELF with executable segment containing prohibited instructions
+        let mut elf_binary = create_test_elf_with_code(&[
+            0x90, // NOP
+            0x0F, 0xA2, // CPUID (2 bytes)
+            0x90, // NOP
+            0x0F, 0x05, // SYSCALL (2 bytes)
+            0x90, // NOP
+            0x0F, 0x34, // SYSENTER (2 bytes)
+            0x90, // NOP
+            0xCD, 0x80, // INT 0x80 (2 bytes)
+            0x90, // NOP
+            0xC3, // RET
+        ]);
 
         // Call patch_enclave_binary
         let result = patch_enclave_binary(&elf_binary);
@@ -664,21 +668,233 @@ mod tests {
 
         let patched = result.unwrap();
 
-        // Verify patches at offset 0x100 (.text section)
-        let offset = 0x100;
-        assert_eq!(patched[offset], 0x90); // NOP unchanged
-        assert_eq!(patched[offset + 1], 0xCC); // CPUID -> INT3
-        assert_eq!(patched[offset + 2], INST_ID_CPUID); // CPUID identifier
-        assert_eq!(patched[offset + 3], 0x90); // NOP unchanged
-        assert_eq!(patched[offset + 4], 0xCC); // SYSCALL -> INT3
-        assert_eq!(patched[offset + 5], INST_ID_SYSCALL); // SYSCALL identifier
-        assert_eq!(patched[offset + 6], 0x90); // NOP unchanged
-        assert_eq!(patched[offset + 7], 0xCC); // SYSENTER -> INT3
-        assert_eq!(patched[offset + 8], INST_ID_SYSENTER); // SYSENTER identifier
-        assert_eq!(patched[offset + 9], 0x90); // NOP unchanged
-        assert_eq!(patched[offset + 10], 0xCC); // INT 0x80 -> INT3
-        assert_eq!(patched[offset + 11], INST_ID_INT80); // INT 0x80 identifier
-        assert_eq!(patched[offset + 12], 0x90); // NOP unchanged
-        assert_eq!(patched[offset + 13], 0xC3); // RET unchanged
+        // Find the code section
+        let code_offset = find_code_offset(&elf_binary);
+
+        // Verify patches
+        assert_eq!(patched[code_offset], 0x90); // NOP unchanged
+        assert_eq!(patched[code_offset + 1], 0xCC); // CPUID -> INT3
+        assert_eq!(patched[code_offset + 2], make_id(INST_KIND_CPUID, 2)); // CPUID ID with length 2
+        assert_eq!(patched[code_offset + 3], 0x90); // NOP unchanged
+        assert_eq!(patched[code_offset + 4], 0xCC); // SYSCALL -> INT3
+        assert_eq!(patched[code_offset + 5], make_id(INST_KIND_SYSCALL, 2)); // SYSCALL ID with length 2
+        assert_eq!(patched[code_offset + 6], 0x90); // NOP unchanged
+        assert_eq!(patched[code_offset + 7], 0xCC); // SYSENTER -> INT3
+        assert_eq!(patched[code_offset + 8], make_id(INST_KIND_SYSENTER, 2)); // SYSENTER ID with length 2
+        assert_eq!(patched[code_offset + 9], 0x90); // NOP unchanged
+        assert_eq!(patched[code_offset + 10], 0xCC); // INT 0x80 -> INT3
+        assert_eq!(patched[code_offset + 11], make_id(INST_KIND_INT80, 2)); // INT 0x80 ID with length 2
+        assert_eq!(patched[code_offset + 12], 0x90); // NOP unchanged
+        assert_eq!(patched[code_offset + 13], 0xC3); // RET unchanged
+    }
+
+    #[test]
+    fn test_patch_enclave_binary_with_prefixes() {
+        // Test instructions with prefixes (different lengths)
+        let elf_binary = create_test_elf_with_code(&[
+            // REX prefix + SYSCALL (3 bytes)
+            0x48, 0x0F, 0x05, // REX.W SYSCALL
+            // Operand size prefix + SYSCALL (3 bytes)
+            0x66, 0x0F, 0x05, // 66 SYSCALL
+            // REP prefix + CPUID (3 bytes)
+            0xF3, 0x0F, 0xA2, // REP CPUID
+            // Multiple prefixes + SYSENTER (4 bytes)
+            0x66, 0xF3, 0x0F, 0x34, // 66 REP SYSENTER
+            0xC3, // RET
+        ]);
+
+        let result = patch_enclave_binary(&elf_binary);
+        assert!(result.is_ok(), "Failed to patch binary: {:?}", result.err());
+
+        let patched = result.unwrap();
+        let code_offset = find_code_offset(&elf_binary);
+
+        // Verify REX.W SYSCALL patch (3 bytes)
+        assert_eq!(patched[code_offset], 0xCC); // INT3
+        assert_eq!(patched[code_offset + 1], make_id(INST_KIND_SYSCALL, 3)); // ID with length 3
+        assert_eq!(patched[code_offset + 2], 0x90); // NOP padding
+
+        // Verify 66 SYSCALL patch (3 bytes)
+        assert_eq!(patched[code_offset + 3], 0xCC); // INT3
+        assert_eq!(patched[code_offset + 4], make_id(INST_KIND_SYSCALL, 3)); // ID with length 3
+        assert_eq!(patched[code_offset + 5], 0x90); // NOP padding
+
+        // Verify REP CPUID patch (3 bytes)
+        assert_eq!(patched[code_offset + 6], 0xCC); // INT3
+        assert_eq!(patched[code_offset + 7], make_id(INST_KIND_CPUID, 3)); // ID with length 3
+        assert_eq!(patched[code_offset + 8], 0x90); // NOP padding
+
+        // Verify 66 REP SYSENTER patch (4 bytes)
+        assert_eq!(patched[code_offset + 9], 0xCC); // INT3
+        assert_eq!(patched[code_offset + 10], make_id(INST_KIND_SYSENTER, 4)); // ID with length 4
+        assert_eq!(patched[code_offset + 11], 0x90); // NOP padding
+        assert_eq!(patched[code_offset + 12], 0x90); // NOP padding
+
+        // RET unchanged
+        assert_eq!(patched[code_offset + 13], 0xC3);
+    }
+
+    #[test]
+    fn test_patch_enclave_binary_no_false_positives() {
+        // Test that we don't patch data that looks like instructions
+        let elf_binary = create_test_elf_with_mixed_sections(
+            &[
+                // .text section
+                0x90, // NOP
+                0x0F, 0xA2, // CPUID (should be patched)
+                0xC3, // RET
+            ],
+            &[
+                // .data section (non-executable)
+                0x0F, 0xA2, // Data that looks like CPUID (should NOT be patched)
+                0x0F, 0x05, // Data that looks like SYSCALL (should NOT be patched)
+                0x0F, 0x34, // Data that looks like SYSENTER (should NOT be patched)
+                0xCD, 0x80, // Data that looks like INT 0x80 (should NOT be patched)
+            ],
+        );
+
+        let result = patch_enclave_binary(&elf_binary);
+        assert!(result.is_ok(), "Failed to patch binary: {:?}", result.err());
+
+        let patched = result.unwrap();
+        let (text_offset, data_offset) = find_section_offsets(&elf_binary);
+
+        // Verify .text section: CPUID should be patched
+        assert_eq!(patched[text_offset], 0x90); // NOP unchanged
+        assert_eq!(patched[text_offset + 1], 0xCC); // CPUID -> INT3
+        assert_eq!(patched[text_offset + 2], make_id(INST_KIND_CPUID, 2)); // CPUID ID
+        assert_eq!(patched[text_offset + 3], 0xC3); // RET unchanged
+
+        // Verify .data section: nothing should be patched
+        assert_eq!(patched[data_offset], 0x0F); // Data unchanged
+        assert_eq!(patched[data_offset + 1], 0xA2); // Data unchanged
+        assert_eq!(patched[data_offset + 2], 0x0F); // Data unchanged
+        assert_eq!(patched[data_offset + 3], 0x05); // Data unchanged
+        assert_eq!(patched[data_offset + 4], 0x0F); // Data unchanged
+        assert_eq!(patched[data_offset + 5], 0x34); // Data unchanged
+        assert_eq!(patched[data_offset + 6], 0xCD); // Data unchanged
+        assert_eq!(patched[data_offset + 7], 0x80); // Data unchanged
+    }
+
+    #[test]
+    fn test_patch_enclave_binary_jump_table_no_false_positive() {
+        // Test that jump table entries are not mistaken for instructions
+        let elf_binary = create_test_elf_with_code(&[
+            // A simple function with embedded data (simulating a jump table)
+            0x48, 0x8B, 0x05, 0x00, 0x00, 0x00, 0x00, // MOV RAX, [RIP+0]
+            0xFF, 0xE0, // JMP RAX
+            // Data that looks like prohibited instructions but is actually jump addresses
+            0x05, 0x0F, 0x00, 0x00, // Address that starts with 0x05, 0x0F (not SYSCALL)
+            0xA2, 0x0F, 0x00, 0x00, // Address that starts with 0xA2, 0x0F (not CPUID)
+            // Real prohibited instruction after the data
+            0x0F, 0xA2, // CPUID (should be patched)
+            0xC3, // RET
+        ]);
+
+        let result = patch_enclave_binary(&elf_binary);
+        assert!(result.is_ok(), "Failed to patch binary: {:?}", result.err());
+
+        let patched = result.unwrap();
+        let code_offset = find_code_offset(&elf_binary);
+
+        // Verify that the jump table data is not patched
+        assert_eq!(patched[code_offset + 9], 0x05); // Data unchanged
+        assert_eq!(patched[code_offset + 10], 0x0F); // Data unchanged
+        assert_eq!(patched[code_offset + 13], 0xA2); // Data unchanged
+        assert_eq!(patched[code_offset + 14], 0x0F); // Data unchanged
+
+        // Verify that the real CPUID instruction is patched
+        assert_eq!(patched[code_offset + 17], 0xCC); // CPUID -> INT3
+        assert_eq!(patched[code_offset + 18], make_id(INST_KIND_CPUID, 2)); // CPUID ID
+    }
+
+    #[test]
+    fn test_id_format() {
+        // Test ID encoding and decoding
+        for len in 1u8..=15u8 {
+            for kind in [
+                INST_KIND_CPUID,
+                INST_KIND_SYSCALL,
+                INST_KIND_SYSENTER,
+                INST_KIND_INT80,
+            ] {
+                let id = make_id(kind, len);
+                assert_eq!(
+                    get_kind_from_id(id),
+                    kind,
+                    "Kind mismatch for len={len}, kind={kind}"
+                );
+                assert_eq!(
+                    get_length_from_id(id),
+                    len,
+                    "Length mismatch for len={len}, kind={kind}"
+                );
+            }
+        }
+    }
+
+    // Helper functions for tests
+    fn create_test_elf_with_code(code: &[u8]) -> Vec<u8> {
+        create_test_elf_with_mixed_sections(code, &[])
+    }
+
+    fn create_test_elf_with_mixed_sections(text_content: &[u8], data_content: &[u8]) -> Vec<u8> {
+        // This creates a minimal ELF with proper program headers and sections
+        // The actual implementation would create a valid ELF structure
+        // For brevity, using a simplified version here
+        let total_size = 0x3000 + text_content.len().max(data_content.len());
+        let mut elf = vec![0u8; total_size]; // Allocate space
+
+        // ELF header
+        elf[0..8].copy_from_slice(&[0x7f, b'E', b'L', b'F', 0x02, 0x01, 0x01, 0x00]);
+        elf[0x10] = 0x02; // ET_EXEC
+        elf[0x12] = 0x3e; // EM_X86_64
+        elf[0x14] = 0x01; // EV_CURRENT
+
+        // Program header offset
+        elf[0x20..0x28].copy_from_slice(&0x40u64.to_le_bytes());
+
+        // e_phentsize (size of program header entry)
+        elf[0x36..0x38].copy_from_slice(&0x38u16.to_le_bytes());
+
+        // e_phnum (number of program headers)
+        let phnum = if data_content.is_empty() { 1u16 } else { 2u16 };
+        elf[0x38..0x3A].copy_from_slice(&phnum.to_le_bytes());
+
+        // Program header for executable segment at offset 0x40
+        elf[0x40] = 0x01; // PT_LOAD
+        elf[0x44] = 0x05; // PF_X | PF_R (executable)
+        elf[0x48..0x50].copy_from_slice(&0x1000u64.to_le_bytes()); // offset
+        elf[0x50..0x58].copy_from_slice(&0x1000u64.to_le_bytes()); // vaddr
+        elf[0x60..0x68].copy_from_slice(&(text_content.len() as u64).to_le_bytes()); // filesz
+        elf[0x68..0x70].copy_from_slice(&(text_content.len() as u64).to_le_bytes()); // memsz
+
+        // Copy text content
+        elf[0x1000..0x1000 + text_content.len()].copy_from_slice(text_content);
+
+        if !data_content.is_empty() {
+            // Program header for data segment at offset 0x80
+            elf[0x80] = 0x01; // PT_LOAD
+            elf[0x84] = 0x06; // PF_R | PF_W (not executable)
+            elf[0x88..0x90].copy_from_slice(&0x2000u64.to_le_bytes()); // offset
+            elf[0x90..0x98].copy_from_slice(&0x2000u64.to_le_bytes()); // vaddr
+            elf[0xA0..0xA8].copy_from_slice(&(data_content.len() as u64).to_le_bytes()); // filesz
+            elf[0xA8..0xB0].copy_from_slice(&(data_content.len() as u64).to_le_bytes()); // memsz
+
+            // Copy data content
+            elf[0x2000..0x2000 + data_content.len()].copy_from_slice(data_content);
+        }
+
+        elf
+    }
+
+    fn find_code_offset(elf: &[u8]) -> usize {
+        // For our test ELF, code starts at 0x1000
+        0x1000
+    }
+
+    fn find_section_offsets(elf: &[u8]) -> (usize, usize) {
+        // For our test ELF, text at 0x1000, data at 0x2000
+        (0x1000, 0x2000)
     }
 }

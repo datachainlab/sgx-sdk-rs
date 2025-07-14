@@ -15,10 +15,11 @@ crate-type = ["rlib"]
 default        = []
 global_init    = ["global_exit"]
 global_exit    = ["global_init"]
-simulate_utils = ["tracing", "object"]
+simulate_utils = ["tracing", "object", "iced-x86"]
 
 [dependencies]
 tracing   = { version = "0.1", optional = true }
 sgx-types = { path = "../sgx-types", default-features = false, features = ["urts"] }
 libc      = { version = "0.2" }
 object    = { version = "0.37", optional = true }
+iced-x86  = { version = "1.21", optional = true }
