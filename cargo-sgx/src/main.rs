@@ -301,15 +301,13 @@ fn create_enclave_so(
         if enclave_dir_script.exists() {
             Some(enclave_dir_script)
         } else {
-            // Generate default version script if needed
-            let default_script = output
-                .parent()
-                .unwrap_or(Path::new("."))
-                .join(ENCLAVE_LDS_FILE);
-            if !default_script.exists() {
-                create_version_script(&default_script)?;
-            }
-            Some(default_script)
+            // Generate default version script in the enclave directory (where Cargo.toml is located)
+            println!(
+                "Creating default {ENCLAVE_LDS_FILE} in {}",
+                enclave_dir.display()
+            );
+            create_version_script(&enclave_dir_script)?;
+            Some(enclave_dir_script)
         }
     };
 
@@ -347,6 +345,7 @@ fn create_version_script(path: &Path) -> Result<()> {
         g_global_data;
         enclave_entry;
         g_peak_heap_used;
+        g_peak_rsrv_mem_committed;
     local:
         *;
 };
@@ -549,6 +548,7 @@ fn create_enclave_lds(dir: &Path, force: bool) -> Result<()> {
         return Ok(());
     }
 
+    println!("Creating {ENCLAVE_LDS_FILE}...");
     create_version_script(&path)?;
     Ok(())
 }
