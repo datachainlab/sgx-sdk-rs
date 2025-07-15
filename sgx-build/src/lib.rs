@@ -94,14 +94,62 @@ pub struct SgxBuilder {
 }
 
 impl SgxBuilder {
+    /// Create a new EnclaveBuilder with default settings from environment
+    pub fn new() -> Self {
+        let sgx_sdk = env::var("SGX_SDK").unwrap_or_else(|_| "/opt/intel/sgxsdk".to_string());
+        let sgx_mode = env::var("SGX_MODE")
+            .ok()
+            .and_then(|s| SgxMode::from_str(&s).ok())
+            .unwrap_or_default();
+        let sgx_arch = env::var("SGX_ARCH").unwrap_or_else(|_| {
+            if cfg!(target_pointer_width = "32") {
+                "x86".to_string()
+            } else {
+                "x64".to_string()
+            }
+        });
+        let debug = env::var("SGX_DEBUG").unwrap_or_default() == "1" || cfg!(debug_assertions);
+        let mitigation_cve_2020_0551 = match env::var("MITIGATION_CVE_2020_0551")
+            .or_else(|_| env::var("MITIGATION-CVE-2020-0551"))
+        {
+            Ok(val) if val.is_empty() => Cve20200551Mitigation::default(),
+            Ok(val) => Cve20200551Mitigation::from_str(&val)
+                .unwrap_or_else(|e| panic!("Invalid MITIGATION_CVE_2020_0551 value: {e}")),
+            Err(_) => Cve20200551Mitigation::default(),
+        };
+
+        let gcc_version = Self::detect_gcc_version();
+
+        Self {
+            sgx_sdk: PathBuf::from(sgx_sdk),
+            sgx_mode,
+            sgx_arch,
+            debug,
+            mitigation_cve_2020_0551,
+            gcc_version,
+        }
+    }
+
+    /// Print cargo rerun-if-env-changed for common environment variables
+    fn print_common_env_rerun() {
+        println!("cargo:rerun-if-env-changed=SGX_SDK");
+        println!("cargo:rerun-if-env-changed=SGX_MODE");
+        println!("cargo:rerun-if-env-changed=SGX_ARCH");
+        println!("cargo:rerun-if-env-changed=SGX_DEBUG");
+        println!("cargo:rerun-if-env-changed=MITIGATION_CVE_2020_0551");
+        println!("cargo:rerun-if-env-changed=MITIGATION-CVE-2020-0551");
+    }
+
     /// Get the target directory for EDL artifacts
     fn get_edl_target_dir() -> PathBuf {
         // First, try CARGO_TARGET_DIR which is explicitly set
         if let Ok(target_dir) = env::var("CARGO_TARGET_DIR") {
+            println!("cargo:rerun-if-env-changed=CARGO_TARGET_DIR");
             return PathBuf::from(target_dir).join("edl");
         }
 
         // Otherwise, require OUT_DIR to be set (should always be set in build.rs context)
+        println!("cargo:rerun-if-env-changed=OUT_DIR");
         let out_dir = env::var("OUT_DIR")
             .expect("OUT_DIR not set. This function should only be called from build.rs");
 
@@ -124,43 +172,6 @@ impl SgxBuilder {
                     out_path.display()
                 ),
             }
-        }
-    }
-
-    /// Create a new EnclaveBuilder with default settings from environment
-    pub fn new() -> Self {
-        let sgx_sdk = env::var("SGX_SDK").unwrap_or_else(|_| "/opt/intel/sgxsdk".to_string());
-        let sgx_mode = env::var("SGX_MODE")
-            .ok()
-            .and_then(|s| SgxMode::from_str(&s).ok())
-            .unwrap_or_default();
-        let sgx_arch = env::var("SGX_ARCH").unwrap_or_else(|_| {
-            if cfg!(target_pointer_width = "32") {
-                "x86".to_string()
-            } else {
-                "x64".to_string()
-            }
-        });
-        let debug =
-            env::var("SGX_DEBUG").is_ok() || env::var("DEBUG").is_ok() || cfg!(debug_assertions);
-        let mitigation_cve_2020_0551 = match env::var("MITIGATION_CVE_2020_0551")
-            .or_else(|_| env::var("MITIGATION-CVE-2020-0551"))
-        {
-            Ok(val) if val.is_empty() => Cve20200551Mitigation::default(),
-            Ok(val) => Cve20200551Mitigation::from_str(&val)
-                .unwrap_or_else(|e| panic!("Invalid MITIGATION_CVE_2020_0551 value: {e}")),
-            Err(_) => Cve20200551Mitigation::default(),
-        };
-
-        let gcc_version = Self::detect_gcc_version();
-
-        Self {
-            sgx_sdk: PathBuf::from(sgx_sdk),
-            sgx_mode,
-            sgx_arch,
-            debug,
-            mitigation_cve_2020_0551,
-            gcc_version,
         }
     }
 
@@ -233,6 +244,7 @@ impl SgxBuilder {
 
         // Add additional search paths if needed
         if let Ok(sgx_edl_search_paths) = env::var("SGX_EDL_SEARCH_PATHS") {
+            println!("cargo:rerun-if-env-changed=SGX_EDL_SEARCH_PATHS");
             for path in sgx_edl_search_paths.split(':') {
                 cmd.args(["--search-path", path]);
             }
@@ -352,6 +364,7 @@ impl SgxBuilder {
         // Debug/Release specific flags
         if self.debug {
             build
+                .flag("-ggdb")
                 .flag("-O0")
                 .flag("-g")
                 .define("DEBUG", None)
@@ -506,6 +519,9 @@ impl SgxBuilder {
         // Tell cargo to rerun if EDL changes
         println!("cargo:rerun-if-changed={}", edl_path.display());
 
+        // Tell cargo to rerun if environment variables change
+        Self::print_common_env_rerun();
+
         Ok(())
     }
 
@@ -554,6 +570,9 @@ impl SgxBuilder {
 
         // Tell cargo to rerun if EDL changes
         println!("cargo:rerun-if-changed={}", edl_path.display());
+
+        // Tell cargo to rerun if environment variables change
+        Self::print_common_env_rerun();
 
         Ok(())
     }

@@ -67,6 +67,51 @@ Remove all build artifacts:
 make clean
 ```
 
+### Debug with sgx-gdb
+
+The Intel SGX SDK provides `sgx-gdb`, a GDB extension for debugging SGX enclaves.
+
+#### Build for Debugging
+
+**Important**: To use the debugger, you must build with debug symbols:
+
+```bash
+make clean
+make DEBUG=1 all
+```
+
+This builds both the enclave and application with debug information (`-g` flag).
+
+#### Basic Debugging
+
+To debug the application and enclave:
+
+```bash
+cd bin
+SGX_DEBUG=1 sgx-gdb ./app
+```
+
+#### Memory Usage Analysis
+
+You can use the SGX Enclave Memory Measurement Tool (EMMT) to analyze enclave memory usage:
+
+```bash
+cd bin
+SGX_DEBUG=1 sgx-gdb -ex="enable sgx_emmt" -ex=r --args ./app
+```
+
+This will show peak memory usage after the enclave exits:
+
+```
+[+] Init Enclave Successful 3077026240004098!
+[+] ecall_sample success...
+[+] Enclave returned: Hello from enclave: Hello, world!
+Enclave: "/path/to/sgx-sdk-rs/samples/hello-rust/bin/enclave.signed.so"
+  [Peak stack used]: 5 KB
+  [Peak heap used]:  4 KB
+  [Peak reserved memory used]:  0 KB
+```
+
 ## Understanding the Code
 
 - **app/**: Contains the untrusted host application that loads and communicates with the enclave
