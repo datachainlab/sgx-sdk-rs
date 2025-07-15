@@ -6,10 +6,10 @@ build   = "build.rs"
 edition = "2021"
 
 [dependencies]
-sgx-types = { path = "../../sgx-types", default-features = false, features = ["uae_service", "urts"] }
-sgx-urts  = { path = "../../sgx-urts", features = ["simulate_utils"] }
-libc = "0.2"
-tracing = "0.1"
+sgx-types          = { path = "../../sgx-types", default-features = false, features = ["uae_service", "urts"] }
+sgx-urts           = { path = "../../sgx-urts", features = ["simulate_utils"] }
+libc               = "0.2"
+tracing            = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [build-dependencies]
