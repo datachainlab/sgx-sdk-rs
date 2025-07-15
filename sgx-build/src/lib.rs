@@ -352,6 +352,7 @@ impl SgxBuilder {
         // Debug/Release specific flags
         if self.debug {
             build
+                .flag("-ggdb")
                 .flag("-O0")
                 .flag("-g")
                 .define("DEBUG", None)
