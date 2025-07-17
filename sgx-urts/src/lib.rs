@@ -28,6 +28,8 @@ pub mod net;
 pub mod pipe;
 pub mod process;
 pub mod signal;
+#[cfg(feature = "simulate_utils")]
+pub mod simulate;
 pub mod socket;
 pub mod sys;
 pub mod thread;

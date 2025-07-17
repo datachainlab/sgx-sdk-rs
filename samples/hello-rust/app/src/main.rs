@@ -36,13 +36,7 @@ extern "C" {
 fn init_enclave() -> SgxResult<SgxEnclave> {
     let mut launch_token: sgx_launch_token_t = [0; 1024];
     let mut launch_token_updated: i32 = 0;
-    let debug = match env::var("SGX_DEBUG") {
-        Ok(val) => match val.as_str() {
-            "1" => 1,
-            _ => 0,
-        },
-        Err(_) => 0,
-    };
+    let debug = env::var("SGX_DEBUG").unwrap_or_default() == "1";
     let mut misc_attr = sgx_misc_attribute_t {
         secs_attr: sgx_attributes_t { flags: 0, xfrm: 0 },
         misc_select: 0,
@@ -50,7 +44,7 @@ fn init_enclave() -> SgxResult<SgxEnclave> {
     // call sgx_create_enclave to initialize an enclave instance
     SgxEnclave::create(
         ENCLAVE_FILE,
-        debug,
+        debug.into(),
         &mut launch_token,
         &mut launch_token_updated,
         &mut misc_attr,
