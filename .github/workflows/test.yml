@@ -17,8 +17,8 @@ jobs:
         with:
           toolchain: nightly-2025-05-10
           components: rust-src, rustfmt, clippy
-      - run: cargo install taplo-cli --version 0.10.0
-      - run: cargo install --path ./cargo-sgx
+      - run: cargo install taplo-cli --version 0.10.0 --locked
+      - run: cargo install --path ./cargo-sgx --locked
       - run: sudo bash .github/scripts/install_sgx_sdk.sh /opt/intel
       - run: source /opt/intel/sgxsdk/environment && make test
       - name: Test cargo sgx new
