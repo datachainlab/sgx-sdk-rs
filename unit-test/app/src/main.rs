@@ -95,7 +95,7 @@ extern "C" fn sigill_handler(_sig: libc::c_int, _info: *mut siginfo_t, context: 
 fn install_sigill_handler() -> Result<(), String> {
     // Install our handler
     let mut sa: sigaction = unsafe { mem::zeroed() };
-    sa.sa_sigaction = sigill_handler as usize;
+    sa.sa_sigaction = sigill_handler as *const () as usize;
     sa.sa_flags = SA_SIGINFO | SA_NODEFER | SA_RESTART;
     unsafe {
         libc::sigemptyset(&mut sa.sa_mask);

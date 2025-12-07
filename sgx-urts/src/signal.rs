@@ -233,7 +233,7 @@ pub extern "C" fn u_sigaction_ocall(
             .register_signal(signo.unwrap(), enclave_id);
 
         let new_act = sigaction {
-            sa_sigaction: handle_signal_entry as usize,
+            sa_sigaction: handle_signal_entry as *const () as usize,
             // Set the flag so that sa_sigaction is registered as the signal handler
             // instead of sa_handler.
             sa_flags: e_act.sa_flags | SA_SIGINFO,
