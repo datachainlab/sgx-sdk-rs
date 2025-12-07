@@ -371,7 +371,7 @@ impl<'a, T: 'a + Copy + ContiguousMemory> SgxMacAadata<'a, [T]> {
         if size > aad_len {
             return Err(sgx_status_t::SGX_ERROR_MAC_MISMATCH);
         }
-        if (aad_len % size) != 0 {
+        if !aad_len.is_multiple_of(size) {
             return Err(sgx_status_t::SGX_ERROR_MAC_MISMATCH);
         }
         self.inner.unmac_aadata().map(|x| {

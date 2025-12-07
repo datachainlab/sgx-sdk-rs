@@ -675,7 +675,7 @@ impl<'a, T: 'a + Copy + ContiguousMemory> SgxSealedData<'a, [T]> {
         if size > encrypt_len {
             return Err(sgx_status_t::SGX_ERROR_MAC_MISMATCH);
         }
-        if (encrypt_len % size) != 0 {
+        if !encrypt_len.is_multiple_of(size) {
             return Err(sgx_status_t::SGX_ERROR_MAC_MISMATCH);
         }
 

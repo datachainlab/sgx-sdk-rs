@@ -21,12 +21,10 @@ use object::elf::PF_X;
 use object::{Object, ObjectSegment};
 use sgx_types::*;
 use std::ptr;
-use tracing::{debug, info};
+use tracing::{debug, trace};
 
 /// Patch prohibited instructions in enclave binary
 pub fn patch_enclave_binary(binary_data: &[u8]) -> Result<Vec<u8>, String> {
-    info!("Loading and patching enclave binary");
-
     // Create a mutable copy
     let mut patched_binary = binary_data.to_vec();
 
@@ -133,11 +131,11 @@ pub fn patch_enclave_binary(binary_data: &[u8]) -> Result<Vec<u8>, String> {
         }
     }
 
-    info!("Patching completed. Total patches: {}", total_patches);
-    info!("  CPUID: {}", cpuid_count);
-    info!("  SYSCALL: {}", syscall_count);
-    info!("  SYSENTER: {}", sysenter_count);
-    info!("  INT 0x80: {}", int80_count);
+    trace!("Patching completed. Total patches: {}", total_patches);
+    trace!("  CPUID: {}", cpuid_count);
+    trace!("  SYSCALL: {}", syscall_count);
+    trace!("  SYSENTER: {}", sysenter_count);
+    trace!("  INT 0x80: {}", int80_count);
 
     Ok(patched_binary)
 }
