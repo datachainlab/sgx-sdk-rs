@@ -12,8 +12,8 @@
   
     "crt-objects-fallback": "false",
     "max-atomic-width": 64,
-    "target-c-int-width": "32",
-    "target-pointer-width": "64",
+    "target-c-int-width": 32,
+    "target-pointer-width": 64,
   
     "position-independent-executables": true,
     "plt-by-default": false,
