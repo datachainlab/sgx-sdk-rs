@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License..
 
-#![feature(linkage)]
+#![cfg_attr(feature = "signal", feature(linkage))]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 pub mod asyncio;
@@ -27,6 +27,7 @@ pub mod mem;
 pub mod net;
 pub mod pipe;
 pub mod process;
+#[cfg(feature = "signal")]
 pub mod signal;
 #[cfg(feature = "simulate_utils")]
 pub mod simulate;
