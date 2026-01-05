@@ -1,5 +1,5 @@
 # Paths
-SGX_SDK ?= /opt/sgxsdk
+SGX_SDK ?= /opt/intel/sgxsdk
 DEBUG := 0
 ifeq ($(DEBUG), 0)
 	PROFILE := release

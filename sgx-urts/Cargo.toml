@@ -12,10 +12,11 @@ name       = "sgx_urts"
 crate-type = ["rlib"]
 
 [features]
-default        = []
+default        = ["signal"]
 global_init    = ["global_exit"]
 global_exit    = ["global_init"]
 simulate_utils = ["tracing", "object", "iced-x86"]
+signal         = []
 
 [dependencies]
 sgx-types = { path = "../sgx-types", default-features = false, features = ["urts"] }

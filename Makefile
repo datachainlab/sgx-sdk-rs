@@ -42,13 +42,13 @@ enclave-test:
 untrusted-test:
 	@echo "Running untrusted crate tests..."
 	@echo "Testing sgx-types..."
-	@cd sgx-types && cargo test --features urts
+	@cargo +stable test --manifest-path sgx-types/Cargo.toml --features urts
 	@echo "Testing sgx-urts..."
-	@cd sgx-urts && cargo test --features simulate_utils
+	@cargo +stable test --manifest-path sgx-urts/Cargo.toml --no-default-features --features simulate_utils
 	@echo "Testing sgx-build..."
-	@cd sgx-build && cargo test
+	@cargo +stable test --manifest-path sgx-build/Cargo.toml
 	@echo "Testing cargo-sgx..."
-	@cd cargo-sgx && cargo test
+	@cargo +stable test --manifest-path cargo-sgx/Cargo.toml
 
 .PHONY: toml-fmt
 toml-fmt:
