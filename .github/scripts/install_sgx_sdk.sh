@@ -7,20 +7,20 @@ if [ $# -eq 0 ]; then
 fi
 SDK_DIR_PREFIX=$1
 
-DCAP_VERSION=1.23.100.0-jammy1
+DCAP_VERSION=1.23.100.0-noble1
 # create tmp dir
 TMP_DIR=$(mktemp -d)
 echo "Created temp dir: $TMP_DIR"
 cd $TMP_DIR
 
-wget https://download.01.org/intel-sgx/sgx-dcap/1.21/linux/distro/ubuntu22.04-server/sgx_linux_x64_sdk_2.24.100.3.bin -O sgx_linux_x64_sdk.bin
+wget https://download.01.org/intel-sgx/sgx-dcap/1.23/linux/distro/ubuntu24.04-server/sgx_linux_x64_sdk_2.26.100.0.bin -O sgx_linux_x64_sdk.bin
 chmod a+x sgx_linux_x64_sdk.bin
 ./sgx_linux_x64_sdk.bin --prefix=$SDK_DIR_PREFIX
 rm -rf ./sgx_linux_x64_sdk.bin
 
 wget https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key
 cat intel-sgx-deb.key | tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
-echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list
+echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | tee /etc/apt/sources.list.d/intel-sgx.list
 
 apt-get update -y
 apt-get install -y libsgx-dcap-ql=$DCAP_VERSION libsgx-dcap-ql-dev=$DCAP_VERSION
