@@ -15,11 +15,22 @@
 // specific language governing permissions and limitations
 // under the License..
 
-use libc::{
-    self, c_char, c_int, dirent64, mode_t, off64_t, off_t, size_t, ssize_t, stat, stat64, DIR,
-};
+use libc::{self, c_char, c_int, mode_t, off_t, size_t, ssize_t, stat, DIR};
 use std::io::Error;
 use std::ptr;
+
+#[cfg(not(all(target_os = "linux", target_pointer_width = "32")))]
+use libc::{
+    dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate as ftruncate64,
+    lseek as lseek64, lstat as lstat64, off_t as off64_t, open as open64, readdir_r as readdir64_r,
+    stat as stat64, truncate as truncate64,
+};
+
+#[cfg(all(target_os = "linux", target_pointer_width = "32"))]
+use libc::{
+    dirent64, fstat64, fstatat64, ftruncate64, lseek64, lstat64, off64_t, open64, readdir64_r,
+    stat64, truncate64,
+};
 
 #[no_mangle]
 pub extern "C" fn u_open_ocall(error: *mut c_int, pathname: *const c_char, flags: c_int) -> c_int {
@@ -44,7 +55,7 @@ pub extern "C" fn u_open64_ocall(
     mode: c_int,
 ) -> c_int {
     let mut errno = 0;
-    let ret = unsafe { libc::open64(path, oflag, mode) };
+    let ret = unsafe { open64(path, oflag, mode) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -94,7 +105,7 @@ pub extern "C" fn u_fstat_ocall(error: *mut c_int, fd: c_int, buf: *mut stat) ->
 #[no_mangle]
 pub extern "C" fn u_fstat64_ocall(error: *mut c_int, fd: c_int, buf: *mut stat64) -> c_int {
     let mut errno = 0;
-    let ret = unsafe { libc::fstat64(fd, buf) };
+    let ret = unsafe { fstat64(fd, buf) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -128,7 +139,7 @@ pub extern "C" fn u_stat64_ocall(
     buf: *mut stat64,
 ) -> c_int {
     let mut errno = 0;
-    let ret = unsafe { libc::stat64(path, buf) };
+    let ret = unsafe { stat64(path, buf) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -162,7 +173,7 @@ pub extern "C" fn u_lstat64_ocall(
     buf: *mut stat64,
 ) -> c_int {
     let mut errno = 0;
-    let ret = unsafe { libc::lstat64(path, buf) };
+    let ret = unsafe { lstat64(path, buf) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -202,7 +213,7 @@ pub extern "C" fn u_lseek64_ocall(
     whence: c_int,
 ) -> off64_t {
     let mut errno = 0;
-    let ret = unsafe { libc::lseek64(fd, offset, whence) };
+    let ret = unsafe { lseek64(fd, offset, whence) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -232,7 +243,7 @@ pub extern "C" fn u_ftruncate_ocall(error: *mut c_int, fd: c_int, length: off_t)
 #[no_mangle]
 pub extern "C" fn u_ftruncate64_ocall(error: *mut c_int, fd: c_int, length: off64_t) -> c_int {
     let mut errno = 0;
-    let ret = unsafe { libc::ftruncate64(fd, length) };
+    let ret = unsafe { ftruncate64(fd, length) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -266,7 +277,7 @@ pub extern "C" fn u_truncate64_ocall(
     length: off64_t,
 ) -> c_int {
     let mut errno = 0;
-    let ret = unsafe { libc::truncate64(path, length) };
+    let ret = unsafe { truncate64(path, length) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -553,7 +564,7 @@ pub extern "C" fn u_readdir64_r_ocall(
     entry: *mut dirent64,
     result: *mut *mut dirent64,
 ) -> c_int {
-    unsafe { libc::readdir64_r(dirp, entry, result) }
+    unsafe { readdir64_r(dirp, entry, result) }
 }
 
 #[no_mangle]
@@ -595,7 +606,7 @@ pub extern "C" fn u_fstatat64_ocall(
     flags: c_int,
 ) -> c_int {
     let mut errno = 0;
-    let ret = unsafe { libc::fstatat64(dirfd, pathname, buf, flags) };
+    let ret = unsafe { fstatat64(dirfd, pathname, buf, flags) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
