@@ -34,7 +34,8 @@ const MIN_ALIGN: usize = 8;
 
 // The alignment of sgx tlibc is 16
 // https://github.com/intel/linux-sgx/blob/master/sdk/tlibc/stdlib/malloc.c#L541
-#[cfg(target_arch = "x86_64")]
+// See also https://github.com/rust-lang/rust/blob/b2fabe39bde5174e8d728bb85f2b8d0572c35b74/library/std/src/sys/alloc/mod.rs#L32-L44
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 const MIN_ALIGN: usize = 16;
 
 pub struct System;
@@ -266,7 +267,16 @@ mod platform {
 
     #[inline]
     unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
-        libc::memalign(layout.align(), layout.size()) as *mut u8
+        let mut ptr: *mut c_void = ptr::null_mut();
+        // alignment must be a multiple of sizeof(void *)
+        // See https://github.com/rust-lang/rust/blob/b2fabe39bde5174e8d728bb85f2b8d0572c35b74/library/std/src/sys/alloc/unix.rs#L80-L82
+        let align = layout.align().max(core::mem::size_of::<usize>());
+        let ret = libc::posix_memalign(&mut ptr, align, layout.size());
+        if ret == 0 {
+            ptr as *mut u8
+        } else {
+            ptr::null_mut()
+        }
     }
 }
 
@@ -278,6 +288,6 @@ mod libc {
         pub fn malloc(size: size_t) -> *mut c_void;
         pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
         pub fn free(p: *mut c_void);
-        pub fn memalign(align: size_t, size: size_t) -> *mut c_void;
+        pub fn posix_memalign(memptr: *mut *mut c_void, alignment: size_t, size: size_t) -> i32;
     }
 }
