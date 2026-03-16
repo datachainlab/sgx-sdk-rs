@@ -34,11 +34,8 @@ const MIN_ALIGN: usize = 8;
 
 // The alignment of sgx tlibc is 16
 // https://github.com/intel/linux-sgx/blob/master/sdk/tlibc/stdlib/malloc.c#L541
-#[cfg(target_arch = "x86_64")]
-const MIN_ALIGN: usize = 16;
-
-// See https://github.com/rust-lang/rust/blob/b2fabe39bde5174e8d728bb85f2b8d0572c35b74/library/std/src/sys/alloc/mod.rs#L32-L44
-#[cfg(target_arch = "aarch64")]
+// See also https://github.com/rust-lang/rust/blob/b2fabe39bde5174e8d728bb85f2b8d0572c35b74/library/std/src/sys/alloc/mod.rs#L32-L44
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 const MIN_ALIGN: usize = 16;
 
 pub struct System;
