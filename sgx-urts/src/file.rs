@@ -597,7 +597,7 @@ pub extern "C" fn u_dirfd_ocall(error: *mut c_int, dirp: *mut DIR) -> c_int {
     ret
 }
 
-#[no_mangle]
+linux_only_ocall! {
 pub extern "C" fn u_fstatat64_ocall(
     error: *mut c_int,
     dirfd: c_int,
@@ -616,4 +616,5 @@ pub extern "C" fn u_fstatat64_ocall(
         }
     }
     ret
+}
 }

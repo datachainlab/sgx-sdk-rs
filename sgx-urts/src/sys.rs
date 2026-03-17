@@ -15,8 +15,15 @@
 // specific language governing permissions and limitations
 // under the License..
 
-use libc::{self, c_int, c_long, c_ulong, cpu_set_t, pid_t, size_t};
+use libc::{self, c_int, c_long, c_ulong, pid_t, size_t};
 use std::io::Error;
+
+#[cfg(target_os = "linux")]
+use libc::cpu_set_t;
+
+#[cfg(not(target_os = "linux"))]
+#[allow(non_camel_case_types)]
+type cpu_set_t = libc::c_void;
 
 #[no_mangle]
 pub extern "C" fn u_sysconf_ocall(error: *mut c_int, name: c_int) -> c_long {
@@ -33,64 +40,67 @@ pub extern "C" fn u_sysconf_ocall(error: *mut c_int, name: c_int) -> c_long {
     ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_prctl_ocall(
-    error: *mut c_int,
-    option: c_int,
-    arg2: c_ulong,
-    arg3: c_ulong,
-    arg4: c_ulong,
-    arg5: c_ulong,
-) -> c_int {
-    let mut errno = 0;
-    let ret = unsafe { libc::prctl(option, arg2, arg3, arg4, arg5) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_prctl_ocall(
+        error: *mut c_int,
+        option: c_int,
+        arg2: c_ulong,
+        arg3: c_ulong,
+        arg4: c_ulong,
+        arg5: c_ulong,
+    ) -> c_int {
+        let mut errno = 0;
+        let ret = unsafe { libc::prctl(option, arg2, arg3, arg4, arg5) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_sched_setaffinity_ocall(
-    error: *mut c_int,
-    pid: pid_t,
-    cpusetsize: size_t,
-    mask: *const cpu_set_t,
-) -> c_int {
-    let mut errno = 0;
-    let ret = unsafe { libc::sched_setaffinity(pid, cpusetsize, mask) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_sched_setaffinity_ocall(
+        error: *mut c_int,
+        pid: pid_t,
+        cpusetsize: size_t,
+        mask: *const cpu_set_t,
+    ) -> c_int {
+        let mut errno = 0;
+        let ret = unsafe { libc::sched_setaffinity(pid, cpusetsize, mask) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_sched_getaffinity_ocall(
-    error: *mut c_int,
-    pid: pid_t,
-    cpusetsize: size_t,
-    mask: *mut cpu_set_t,
-) -> c_int {
-    let mut errno = 0;
-    let ret = unsafe { libc::sched_getaffinity(pid, cpusetsize, mask) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_sched_getaffinity_ocall(
+        error: *mut c_int,
+        pid: pid_t,
+        cpusetsize: size_t,
+        mask: *mut cpu_set_t,
+    ) -> c_int {
+        let mut errno = 0;
+        let ret = unsafe { libc::sched_getaffinity(pid, cpusetsize, mask) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }

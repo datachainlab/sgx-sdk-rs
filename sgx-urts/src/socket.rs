@@ -116,27 +116,28 @@ pub extern "C" fn u_accept_ocall(
     ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_accept4_ocall(
-    error: *mut c_int,
-    sockfd: c_int,
-    addr: *mut sockaddr,
-    addrlen_in: socklen_t,
-    addrlen_out: *mut socklen_t,
-    flags: c_int,
-) -> c_int {
-    let mut errno = 0;
-    unsafe { *addrlen_out = addrlen_in };
-    let ret = unsafe { libc::accept4(sockfd, addr, addrlen_out, flags) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_accept4_ocall(
+        error: *mut c_int,
+        sockfd: c_int,
+        addr: *mut sockaddr,
+        addrlen_in: socklen_t,
+        addrlen_out: *mut socklen_t,
+        flags: c_int,
+    ) -> c_int {
+        let mut errno = 0;
+        unsafe { *addrlen_out = addrlen_in };
+        let ret = unsafe { libc::accept4(sockfd, addr, addrlen_out, flags) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
 #[no_mangle]

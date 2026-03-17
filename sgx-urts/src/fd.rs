@@ -220,60 +220,62 @@ pub extern "C" fn u_sendfile_ocall(
     ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_copy_file_range_ocall(
-    error: *mut c_int,
-    fd_in: c_int,
-    off_in: *mut loff_t,
-    fd_out: c_int,
-    off_out: *mut loff_t,
-    len: size_t,
-    flags: c_uint,
-) -> ssize_t {
-    let mut errno = 0;
-    let ret = unsafe {
-        libc::syscall(
-            libc::SYS_copy_file_range,
-            fd_in,
-            off_in,
-            fd_out,
-            off_out,
-            len,
-            flags,
-        ) as ssize_t
-    };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_copy_file_range_ocall(
+        error: *mut c_int,
+        fd_in: c_int,
+        off_in: *mut loff_t,
+        fd_out: c_int,
+        off_out: *mut loff_t,
+        len: size_t,
+        flags: c_uint,
+    ) -> ssize_t {
+        let mut errno = 0;
+        let ret = unsafe {
+            libc::syscall(
+                libc::SYS_copy_file_range,
+                fd_in,
+                off_in,
+                fd_out,
+                off_out,
+                len,
+                flags,
+            ) as ssize_t
+        };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_splice_ocall(
-    error: *mut c_int,
-    fd_in: c_int,
-    off_in: *mut loff_t,
-    fd_out: c_int,
-    off_out: *mut loff_t,
-    len: size_t,
-    flags: c_uint,
-) -> ssize_t {
-    let mut errno = 0;
-    let ret = unsafe { libc::splice(fd_in, off_in, fd_out, off_out, len, flags) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_splice_ocall(
+        error: *mut c_int,
+        fd_in: c_int,
+        off_in: *mut loff_t,
+        fd_out: c_int,
+        off_out: *mut loff_t,
+        len: size_t,
+        flags: c_uint,
+    ) -> ssize_t {
+        let mut errno = 0;
+        let ret = unsafe { libc::splice(fd_in, off_in, fd_out, off_out, len, flags) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
 #[no_mangle]
@@ -391,19 +393,20 @@ pub extern "C" fn u_dup_ocall(error: *mut c_int, oldfd: c_int) -> c_int {
     ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_eventfd_ocall(error: *mut c_int, initval: c_uint, flags: c_int) -> c_int {
-    let mut errno = 0;
-    let ret = unsafe { libc::eventfd(initval, flags) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_eventfd_ocall(error: *mut c_int, initval: c_uint, flags: c_int) -> c_int {
+        let mut errno = 0;
+        let ret = unsafe { libc::eventfd(initval, flags) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
 #[no_mangle]
