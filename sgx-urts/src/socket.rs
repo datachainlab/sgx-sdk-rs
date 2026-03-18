@@ -229,6 +229,26 @@ pub extern "C" fn u_recvmsg_ocall(
         return -1;
     }
 
+    #[cfg(not(target_os = "linux"))]
+    let Ok(msg_iovlen) = msg_iovlen.try_into() else {
+        if !error.is_null() {
+            unsafe {
+                *error = libc::EINVAL;
+            }
+        }
+        return -1;
+    };
+
+    #[cfg(not(target_os = "linux"))]
+    let Ok(msg_controllen) = msg_controllen.try_into() else {
+        if !error.is_null() {
+            unsafe {
+                *error = libc::EINVAL;
+            }
+        }
+        return -1;
+    };
+
     let mut errno = 0;
     let mut msg = msghdr {
         msg_name,
@@ -245,8 +265,17 @@ pub extern "C" fn u_recvmsg_ocall(
     } else {
         unsafe {
             *msg_namelen_out = msg.msg_namelen;
-            *msg_controllen_out = msg.msg_controllen;
             *msg_flags = msg.msg_flags;
+
+            #[cfg(target_os = "linux")]
+            {
+                *msg_controllen_out = msg.msg_controllen;
+            }
+
+            #[cfg(not(target_os = "linux"))]
+            {
+                *msg_controllen_out = msg.msg_controllen as usize;
+            }
         }
     }
 
@@ -315,6 +344,27 @@ pub extern "C" fn u_sendmsg_ocall(
     flags: c_int,
 ) -> ssize_t {
     let mut errno = 0;
+
+    #[cfg(not(target_os = "linux"))]
+    let Ok(msg_iovlen) = msg_iovlen.try_into() else {
+        if !error.is_null() {
+            unsafe {
+                *error = libc::EINVAL;
+            }
+        }
+        return -1;
+    };
+
+    #[cfg(not(target_os = "linux"))]
+    let Ok(msg_controllen) = msg_controllen.try_into() else {
+        if !error.is_null() {
+            unsafe {
+                *error = libc::EINVAL;
+            }
+        }
+        return -1;
+    };
+
     let msg = msghdr {
         msg_name,
         msg_namelen,
