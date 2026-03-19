@@ -15,9 +15,24 @@
 // specific language governing permissions and limitations
 // under the License..
 
+use libc::{self, c_int, c_uint, c_ulong, c_void, iovec, off_t, size_t, ssize_t, timespec};
+
+#[cfg(target_os = "linux")]
+use libc::loff_t;
+
+#[cfg(not(target_os = "linux"))]
+#[allow(non_camel_case_types)]
+type loff_t = i64;
+
+#[cfg(not(all(target_os = "linux", target_pointer_width = "32")))]
 use libc::{
-    self, c_int, c_uint, c_ulong, c_void, iovec, loff_t, off64_t, off_t, size_t, ssize_t, timespec,
+    off_t as off64_t, pread as pread64, preadv as preadv64, pwrite as pwrite64,
+    pwritev as pwritev64,
 };
+
+#[cfg(all(target_os = "linux", target_pointer_width = "32"))]
+use libc::{off64_t, pread64, preadv64, pwrite64, pwritev64};
+
 use std::io::Error;
 
 #[no_mangle]
@@ -49,7 +64,7 @@ pub extern "C" fn u_pread64_ocall(
     offset: off64_t,
 ) -> ssize_t {
     let mut errno = 0;
-    let ret = unsafe { libc::pread64(fd, buf, count, offset) };
+    let ret = unsafe { pread64(fd, buf, count, offset) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -90,7 +105,7 @@ pub extern "C" fn u_preadv64_ocall(
     offset: off64_t,
 ) -> ssize_t {
     let mut errno = 0;
-    let ret = unsafe { libc::preadv64(fd, iov, iovcnt, offset) };
+    let ret = unsafe { preadv64(fd, iov, iovcnt, offset) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -131,7 +146,7 @@ pub extern "C" fn u_pwrite64_ocall(
     offset: off64_t,
 ) -> ssize_t {
     let mut errno = 0;
-    let ret = unsafe { libc::pwrite64(fd, buf, count, offset) };
+    let ret = unsafe { pwrite64(fd, buf, count, offset) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
@@ -172,7 +187,7 @@ pub extern "C" fn u_pwritev64_ocall(
     offset: off64_t,
 ) -> ssize_t {
     let mut errno = 0;
-    let ret = unsafe { libc::pwritev64(fd, iov, iovcnt, offset) };
+    let ret = unsafe { pwritev64(fd, iov, iovcnt, offset) };
     if ret < 0 {
         errno = Error::last_os_error().raw_os_error().unwrap_or(0);
     }
