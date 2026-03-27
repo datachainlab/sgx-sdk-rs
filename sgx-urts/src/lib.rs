@@ -18,6 +18,9 @@
 #![cfg_attr(feature = "signal", feature(linkage))]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
+#[macro_use]
+mod macros;
+
 pub mod asyncio;
 pub mod env;
 pub mod event;

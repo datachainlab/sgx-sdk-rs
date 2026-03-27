@@ -15,8 +15,18 @@
 // specific language governing permissions and limitations
 // under the License..
 
-use libc::{self, c_int, epoll_event, nfds_t, pollfd};
+use libc::{self, c_int, nfds_t, pollfd};
 use std::io::Error;
+
+#[cfg(target_os = "linux")]
+use libc::epoll_event;
+
+#[cfg(not(target_os = "linux"))]
+#[repr(C)]
+pub struct epoll_event {
+    pub events: u32,
+    pub u64: u64,
+}
 
 #[no_mangle]
 pub extern "C" fn u_poll_ocall(
@@ -38,59 +48,62 @@ pub extern "C" fn u_poll_ocall(
     ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_epoll_create1_ocall(error: *mut c_int, flags: c_int) -> c_int {
-    let mut errno = 0;
-    let ret = unsafe { libc::epoll_create1(flags) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_epoll_create1_ocall(error: *mut c_int, flags: c_int) -> c_int {
+        let mut errno = 0;
+        let ret = unsafe { libc::epoll_create1(flags) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_epoll_ctl_ocall(
-    error: *mut c_int,
-    epfd: c_int,
-    op: c_int,
-    fd: c_int,
-    event: *mut epoll_event,
-) -> c_int {
-    let mut errno = 0;
-    let ret = unsafe { libc::epoll_ctl(epfd, op, fd, event) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_epoll_ctl_ocall(
+        error: *mut c_int,
+        epfd: c_int,
+        op: c_int,
+        fd: c_int,
+        event: *mut epoll_event,
+    ) -> c_int {
+        let mut errno = 0;
+        let ret = unsafe { libc::epoll_ctl(epfd, op, fd, event) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_epoll_wait_ocall(
-    error: *mut c_int,
-    epfd: c_int,
-    events: *mut epoll_event,
-    maxevents: c_int,
-    timeout: c_int,
-) -> c_int {
-    let mut errno = 0;
-    let ret = unsafe { libc::epoll_wait(epfd, events, maxevents, timeout) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_epoll_wait_ocall(
+        error: *mut c_int,
+        epfd: c_int,
+        events: *mut epoll_event,
+        maxevents: c_int,
+        timeout: c_int,
+    ) -> c_int {
+        let mut errno = 0;
+        let ret = unsafe { libc::epoll_wait(epfd, events, maxevents, timeout) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
