@@ -199,25 +199,26 @@ pub extern "C" fn u_pwritev64_ocall(
     ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_sendfile_ocall(
-    error: *mut c_int,
-    out_fd: c_int,
-    in_fd: c_int,
-    offset: *mut off_t,
-    count: size_t,
-) -> ssize_t {
-    let mut errno = 0;
-    let ret = unsafe { libc::sendfile(out_fd, in_fd, offset, count) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_sendfile_ocall(
+        error: *mut c_int,
+        out_fd: c_int,
+        in_fd: c_int,
+        offset: *mut off_t,
+        count: size_t,
+    ) -> ssize_t {
+        let mut errno = 0;
+        let ret = unsafe { libc::sendfile(out_fd, in_fd, offset, count) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }
 
 linux_only_ocall! {
