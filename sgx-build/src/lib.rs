@@ -44,20 +44,21 @@ impl FromStr for SgxMode {
 /// SGX target architecture
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SgxArch {
-    X86, // x86
-    X64, // x86_64
-    Other(String),
+    X86,
+    X64,
+    Aarch64,
 }
 
 impl FromStr for SgxArch {
-    type Err = std::convert::Infallible;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "x86" => SgxArch::X86,
-            "x64" | "x86_64" => SgxArch::X64,
-            other => SgxArch::Other(other.to_string()),
-        })
+        match s {
+            "x86" => Ok(SgxArch::X86),
+            "x64" | "x86_64" => Ok(SgxArch::X64),
+            "aarch64" => Ok(SgxArch::Aarch64),
+            other => Err(format!("Unsupported SGX architecture: {other}")),
+        }
     }
 }
 
@@ -127,12 +128,14 @@ impl SgxBuilder {
                     "x86".to_string()
                 } else if cfg!(target_arch = "x86_64") {
                     "x64".to_string()
+                } else if cfg!(target_arch = "aarch64") {
+                    "aarch64".to_string()
                 } else {
                     std::env::consts::ARCH.to_string()
                 }
             })
             .parse()
-            .unwrap(); // Parsing into SgxArch is infallible
+            .unwrap_or_else(|e| panic!("Invalid SGX_ARCH value: {e}"));
         let debug = env::var("SGX_DEBUG").unwrap_or_default() == "1" || cfg!(debug_assertions);
         let mitigation_cve_2020_0551 = match env::var("MITIGATION_CVE_2020_0551")
             .or_else(|_| env::var("MITIGATION-CVE-2020-0551"))
@@ -230,7 +233,7 @@ impl SgxBuilder {
     pub fn get_sdk_lib_path(&self) -> PathBuf {
         match self.sgx_arch {
             SgxArch::X86 => self.sgx_sdk.join("lib"),
-            SgxArch::X64 | SgxArch::Other(_) => self.sgx_sdk.join("lib64"),
+            SgxArch::X64 | SgxArch::Aarch64 => self.sgx_sdk.join("lib64"),
         }
     }
 
@@ -239,7 +242,7 @@ impl SgxBuilder {
         match self.sgx_arch {
             SgxArch::X86 => Some("-m32"),
             SgxArch::X64 => Some("-m64"),
-            SgxArch::Other(_) => None,
+            SgxArch::Aarch64 => None,
         }
     }
 
@@ -369,7 +372,7 @@ impl SgxBuilder {
             SgxArch::X64 => {
                 build.define("ITT_ARCH_IA64", None);
             }
-            SgxArch::Other(_) => {}
+            SgxArch::Aarch64 => {}
         }
 
         // Warning flags
@@ -627,7 +630,7 @@ impl SgxBuilder {
         let target_triple = match self.sgx_arch {
             SgxArch::X86 => "i686-unknown-linux-gnu".to_string(),
             SgxArch::X64 => "x86_64-unknown-linux-gnu".to_string(),
-            SgxArch::Other(ref arch) => format!("{arch}-unknown-linux-gnu"),
+            SgxArch::Aarch64 => "aarch64-unknown-linux-gnu".to_string(),
         };
         cc_build.target(&target_triple).host(&target_triple);
 
