@@ -136,6 +136,9 @@ impl SgxBuilder {
             })
             .parse()
             .unwrap_or_else(|e| panic!("Invalid SGX_ARCH value: {e}"));
+        if sgx_arch == SgxArch::Aarch64 && sgx_mode != SgxMode::Simulation {
+            panic!("Only SW (simulation) mode is supported for aarch64")
+        }
         let debug = env::var("SGX_DEBUG").unwrap_or_default() == "1" || cfg!(debug_assertions);
         let mitigation_cve_2020_0551 = match env::var("MITIGATION_CVE_2020_0551")
             .or_else(|_| env::var("MITIGATION-CVE-2020-0551"))
