@@ -40,3 +40,11 @@ jobs:
         run: make check
       - name: Check TOML formatting
         run: make toml-check
+  test-macos:
+    runs-on: macos-26
+    env:
+      SGX_MODE: SW
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: make untrusted-test
