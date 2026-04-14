@@ -33,17 +33,18 @@ pub extern "C" fn u_pipe_ocall(error: *mut c_int, fds: *mut c_int) -> c_int {
     ret
 }
 
-#[no_mangle]
-pub extern "C" fn u_pipe2_ocall(error: *mut c_int, fds: *mut c_int, flags: c_int) -> c_int {
-    let mut errno = 0;
-    let ret = unsafe { libc::pipe2(fds, flags) };
-    if ret < 0 {
-        errno = Error::last_os_error().raw_os_error().unwrap_or(0);
-    }
-    if !error.is_null() {
-        unsafe {
-            *error = errno;
+linux_only_ocall! {
+    pub extern "C" fn u_pipe2_ocall(error: *mut c_int, fds: *mut c_int, flags: c_int) -> c_int {
+        let mut errno = 0;
+        let ret = unsafe { libc::pipe2(fds, flags) };
+        if ret < 0 {
+            errno = Error::last_os_error().raw_os_error().unwrap_or(0);
         }
+        if !error.is_null() {
+            unsafe {
+                *error = errno;
+            }
+        }
+        ret
     }
-    ret
 }

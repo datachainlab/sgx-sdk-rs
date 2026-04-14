@@ -41,6 +41,27 @@ impl FromStr for SgxMode {
     }
 }
 
+/// SGX target architecture
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SgxArch {
+    X86,
+    X64,
+    Aarch64,
+}
+
+impl FromStr for SgxArch {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "x86" => Ok(SgxArch::X86),
+            "x64" | "x86_64" => Ok(SgxArch::X64),
+            "aarch64" => Ok(SgxArch::Aarch64),
+            other => Err(format!("Unsupported SGX architecture: {other}")),
+        }
+    }
+}
+
 /// CVE-2020-0551 (Load Value Injection) mitigation strategy
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Cve20200551Mitigation {
@@ -87,7 +108,7 @@ pub struct EdlOutput {
 pub struct SgxBuilder {
     sgx_sdk: PathBuf,
     sgx_mode: SgxMode,
-    sgx_arch: String,
+    sgx_arch: SgxArch,
     debug: bool,
     mitigation_cve_2020_0551: Cve20200551Mitigation,
     gcc_version: Option<(u32, u32, u32)>,
@@ -101,13 +122,23 @@ impl SgxBuilder {
             .ok()
             .and_then(|s| SgxMode::from_str(&s).ok())
             .unwrap_or_default();
-        let sgx_arch = env::var("SGX_ARCH").unwrap_or_else(|_| {
-            if cfg!(target_pointer_width = "32") {
-                "x86".to_string()
-            } else {
-                "x64".to_string()
-            }
-        });
+        let sgx_arch: SgxArch = env::var("SGX_ARCH")
+            .unwrap_or_else(|_| {
+                if cfg!(target_arch = "x86") {
+                    "x86".to_string()
+                } else if cfg!(target_arch = "x86_64") {
+                    "x64".to_string()
+                } else if cfg!(target_arch = "aarch64") {
+                    "aarch64".to_string()
+                } else {
+                    std::env::consts::ARCH.to_string()
+                }
+            })
+            .parse()
+            .unwrap_or_else(|e| panic!("Invalid SGX_ARCH value: {e}"));
+        if sgx_arch == SgxArch::Aarch64 && sgx_mode != SgxMode::Simulation {
+            panic!("Only SW (simulation) mode is supported for aarch64")
+        }
         let debug = env::var("SGX_DEBUG").unwrap_or_default() == "1" || cfg!(debug_assertions);
         let mitigation_cve_2020_0551 = match env::var("MITIGATION_CVE_2020_0551")
             .or_else(|_| env::var("MITIGATION-CVE-2020-0551"))
@@ -203,17 +234,18 @@ impl SgxBuilder {
 
     /// Get SDK library path based on architecture
     pub fn get_sdk_lib_path(&self) -> PathBuf {
-        match self.sgx_arch.as_str() {
-            "x86" => self.sgx_sdk.join("lib"),
-            _ => self.sgx_sdk.join("lib64"),
+        match self.sgx_arch {
+            SgxArch::X86 => self.sgx_sdk.join("lib"),
+            SgxArch::X64 | SgxArch::Aarch64 => self.sgx_sdk.join("lib64"),
         }
     }
 
     /// Get architecture-specific flags
-    fn get_arch_flags(&self) -> &'static str {
-        match self.sgx_arch.as_str() {
-            "x86" => "-m32",
-            _ => "-m64",
+    fn get_arch_flags(&self) -> Option<&'static str> {
+        match self.sgx_arch {
+            SgxArch::X86 => Some("-m32"),
+            SgxArch::X64 => Some("-m64"),
+            SgxArch::Aarch64 => None,
         }
     }
 
@@ -298,9 +330,12 @@ impl SgxBuilder {
 
         build
             .file(c_file)
-            .flag(self.get_arch_flags())
             .include(self.sgx_sdk.join("include"))
             .include(c_file_dir);
+
+        if let Some(arch_flag) = self.get_arch_flags() {
+            build.flag(arch_flag);
+        }
 
         // Common flags
         self.apply_common_flags(&mut build);
@@ -333,10 +368,15 @@ impl SgxBuilder {
         build.flag("-fdata-sections");
 
         // Architecture-specific defines
-        match self.sgx_arch.as_str() {
-            "x86" => build.define("ITT_ARCH_IA32", None),
-            _ => build.define("ITT_ARCH_IA64", None),
-        };
+        match self.sgx_arch {
+            SgxArch::X86 => {
+                build.define("ITT_ARCH_IA32", None);
+            }
+            SgxArch::X64 => {
+                build.define("ITT_ARCH_IA64", None);
+            }
+            SgxArch::Aarch64 => {}
+        }
 
         // Warning flags
         build
@@ -475,7 +515,9 @@ impl SgxBuilder {
         println!("cargo:rustc-link-arg=-Wl,--gc-sections");
 
         // Architecture-specific flags
-        println!("cargo:rustc-link-arg={}", self.get_arch_flags());
+        if let Some(arch_flag) = self.get_arch_flags() {
+            println!("cargo:rustc-link-arg={arch_flag}");
+        }
     }
 
     #[allow(clippy::needless_doctest_main)]
@@ -588,10 +630,14 @@ impl SgxBuilder {
     ) -> Result<(), String> {
         let mut cc_build = cc::Build::new();
 
-        cc_build
-            .target("x86_64-unknown-linux-gnu")
-            .host("x86_64-unknown-linux-gnu")
-            .opt_level(if self.debug { 0 } else { 2 });
+        let target_triple = match self.sgx_arch {
+            SgxArch::X86 => "i686-unknown-linux-gnu".to_string(),
+            SgxArch::X64 => "x86_64-unknown-linux-gnu".to_string(),
+            SgxArch::Aarch64 => "aarch64-unknown-linux-gnu".to_string(),
+        };
+        cc_build.target(&target_triple).host(&target_triple);
+
+        cc_build.opt_level(if self.debug { 0 } else { 2 });
 
         // Enable cargo metadata output in debug mode
         cc_build.cargo_metadata(self.debug);
@@ -599,7 +645,9 @@ impl SgxBuilder {
         let mut cmd = cc_build.get_compiler().to_command();
 
         // Architecture flag
-        cmd.arg(self.get_arch_flags());
+        if let Some(arch_flag) = self.get_arch_flags() {
+            cmd.arg(arch_flag);
+        }
 
         // Common linker flags
         cmd.args([
