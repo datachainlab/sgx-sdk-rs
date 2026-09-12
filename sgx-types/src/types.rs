@@ -1106,7 +1106,7 @@ pub struct sgx_aex_mitigation_node_t {
 }
 
 pub type sgx_aex_mitigation_fn_t =
-    extern "C" fn(info: *mut sgx_exception_info_t, args: *const c_void) -> c_void;
+    extern "C" fn(info: *mut sgx_exception_info_t, args: *const c_void);
 
 //
 // sgx_tseal.h
