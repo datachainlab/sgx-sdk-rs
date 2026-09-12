@@ -189,11 +189,12 @@ fn run_sgx_build(args: SgxBuildArgs) -> Result<()> {
     let profile = if args.release { "release" } else { "debug" };
 
     let mut cargo_build = Command::new("cargo");
-    cargo_build
-        .current_dir(&enclave_dir)
-        .arg("build")
-        .arg("--target")
-        .arg(&target_json);
+    cargo_build.current_dir(&enclave_dir).arg("build");
+    // Has no effect if placed before the subcommand.
+    if cargo_needs_json_target_spec() {
+        cargo_build.arg("-Zjson-target-spec");
+    }
+    cargo_build.arg("--target").arg(&target_json);
 
     if args.release {
         cargo_build.arg("--release");
@@ -240,6 +241,21 @@ fn run_sgx_build(args: SgxBuildArgs) -> Result<()> {
     println!("Successfully built: {}", output_path.display());
 
     Ok(())
+}
+
+/// Cargo after 1.93 requires `-Zjson-target-spec` for a `.json` target, and
+/// older cargo rejects the flag as unknown, so ask which flags it knows.
+/// `cargo -Z <flag> --version` is not usable as a probe: it short-circuits
+/// before flag validation and succeeds on both.
+fn cargo_needs_json_target_spec() -> bool {
+    Command::new("cargo")
+        .args(["-Z", "help"])
+        .output()
+        .map(|out| {
+            String::from_utf8_lossy(&out.stdout).contains("json-target-spec")
+                || String::from_utf8_lossy(&out.stderr).contains("json-target-spec")
+        })
+        .unwrap_or(false)
 }
 
 fn get_sgx_target_json(enclave_dir: &Path) -> Result<PathBuf> {
