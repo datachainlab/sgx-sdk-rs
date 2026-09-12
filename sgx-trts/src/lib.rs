@@ -65,7 +65,6 @@
 #![no_std]
 #![allow(stable_features)]
 #![feature(allocator_api)]
-#![feature(specialization)]
 #![feature(vec_into_raw_parts)]
 #![feature(rustc_attrs)]
 #![allow(incomplete_features)]

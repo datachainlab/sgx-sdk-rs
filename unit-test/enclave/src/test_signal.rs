@@ -28,11 +28,23 @@ pub fn test_cpuid_trap() -> TestResult {
 
     #[cfg(sgx_sim)]
     {
-        // In simulation mode, CPUID should be patched to UD2 and handled by our trap handler
+        // In simulation mode, CPUID should be patched to UD2 and handled by our trap handler.
+        // Emitted as inline asm rather than via core::arch::x86_64::__cpuid: since 1.97 a call
+        // to that intrinsic makes the rest of this block unreachable, so the CPUID never reaches
+        // the binary and the tests after it are dropped as dead code.
+        // rbx is reserved by LLVM and cannot be named as an operand, so save and restore it.
         unsafe {
-            use core::arch::x86_64::__cpuid;
-            __cpuid(0)
-        };
+            core::arch::asm!(
+                "mov {tmp:r}, rbx",
+                "cpuid",
+                "mov rbx, {tmp:r}",
+                tmp = out(reg) _,
+                inout("eax") 0 => _,
+                out("ecx") _,
+                out("edx") _,
+                options(nostack, preserves_flags),
+            );
+        }
         // If we reach here, the trap handler successfully handled the UD2
         println!("CPUID trap test: Successfully trapped and continued execution");
         Ok(())

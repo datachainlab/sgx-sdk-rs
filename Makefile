@@ -12,13 +12,16 @@ fmt-check:
 		(cd "$$dir" && cargo fmt -- --check) || exit 1; \
 	done
 
+# Required for a .json target by cargo after 1.93, unknown to cargo before it.
+JSON_TARGET_SPEC := $(shell cargo -Z help 2>&1 | grep -q json-target-spec && echo -Zjson-target-spec)
+
 .PHONY: clippy
 clippy:
 	@find . -name Cargo.toml -not -path "./target/*" -exec dirname {} \; | while read dir; do \
 		if echo "$$dir" | grep -E -q "(enclave$$)"; then \
 			echo "Running clippy on $$dir with SGX target..."; \
 			TARGET_SPEC="$$(pwd)/unit-test/enclave/x86_64-unknown-unknown-sgx.json"; \
-			(cd "$$dir" && cargo clippy -Z build-std=core,alloc --target="$$TARGET_SPEC" --all-features -- -D warnings) || exit 1; \
+			(cd "$$dir" && cargo clippy $(JSON_TARGET_SPEC) -Z build-std=core,alloc --target="$$TARGET_SPEC" --all-features -- -D warnings) || exit 1; \
 		else \
 			echo "Running clippy on $$dir..."; \
 			(cd "$$dir" && cargo clippy --all-targets --all-features -- -D warnings) || exit 1; \
