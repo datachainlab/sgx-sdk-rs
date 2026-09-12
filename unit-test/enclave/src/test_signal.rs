@@ -29,7 +29,7 @@ pub fn test_cpuid_trap() -> TestResult {
     #[cfg(sgx_sim)]
     {
         // In simulation mode, CPUID should be patched to UD2 and handled by our trap handler
-        unsafe {
+        {
             use core::arch::x86_64::__cpuid;
             __cpuid(0)
         };
