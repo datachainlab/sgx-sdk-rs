@@ -29,7 +29,7 @@ pub fn test_cpuid_trap() -> TestResult {
     #[cfg(sgx_sim)]
     {
         // In simulation mode, CPUID should be patched to UD2 and handled by our trap handler.
-        // Emitted as inline asm rather than via core::arch::x86_64::__cpuid: since 1.97 a call
+        // Emitted as inline asm rather than via core::arch::x86_64::__cpuid: since 1.94 a call
         // to that intrinsic makes the rest of this block unreachable, so the CPUID never reaches
         // the binary and the tests after it are dropped as dead code.
         // rbx is reserved by LLVM and cannot be named as an operand, so save and restore it.
