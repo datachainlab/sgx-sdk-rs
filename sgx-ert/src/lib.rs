@@ -1,8 +1,8 @@
 #![no_std]
 #![allow(internal_features)]
 #![feature(rustc_private)]
-#![feature(lang_items)]
-#![feature(alloc_error_handler)]
+#![cfg_attr(target_env = "sgx", feature(lang_items))]
+#![cfg_attr(target_env = "sgx", feature(alloc_error_handler))]
 
 extern crate alloc;
 

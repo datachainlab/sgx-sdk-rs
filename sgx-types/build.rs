@@ -1,13 +1,10 @@
-use sgx_build::SgxBuilder;
 use std::env;
 
 fn main() {
-    let builder = SgxBuilder::new();
-
     // Set library search path for SGX SDK
     println!(
         "cargo:rustc-link-search=native={}",
-        builder.get_sdk_lib_path().display()
+        sgx_build_env::sdk_lib_path().display()
     );
 
     // Enable simulation feature based on SGX_MODE environment variable

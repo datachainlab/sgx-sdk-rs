@@ -41,7 +41,9 @@ tdx_attest           = []
 ttls                 = []
 utls                 = []
 
+# Deliberately not sgx-build: that pulls in cc, which can close a dependency
+# cycle for a downstream crate that patches crates-io `getrandom` for SGX.
 [build-dependencies]
-sgx-build = { path = "../sgx-build" }
+sgx-build-env = { path = "../sgx-build-env" }
 
 [dependencies]

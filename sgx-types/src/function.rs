@@ -16,7 +16,6 @@
 // under the License..
 
 use crate::metadata::{layout_t, TCS_TEMPLATE_SIZE};
-use crate::types::*;
 use crate::*;
 
 // Constants from sgx-trts

@@ -96,18 +96,12 @@ pub struct SgxBuilder {
 impl SgxBuilder {
     /// Create a new EnclaveBuilder with default settings from environment
     pub fn new() -> Self {
-        let sgx_sdk = env::var("SGX_SDK").unwrap_or_else(|_| "/opt/intel/sgxsdk".to_string());
+        let sgx_sdk = sgx_build_env::sgx_sdk();
         let sgx_mode = env::var("SGX_MODE")
             .ok()
             .and_then(|s| SgxMode::from_str(&s).ok())
             .unwrap_or_default();
-        let sgx_arch = env::var("SGX_ARCH").unwrap_or_else(|_| {
-            if cfg!(target_pointer_width = "32") {
-                "x86".to_string()
-            } else {
-                "x64".to_string()
-            }
-        });
+        let sgx_arch = sgx_build_env::sgx_arch();
         let debug = env::var("SGX_DEBUG").unwrap_or_default() == "1" || cfg!(debug_assertions);
         let mitigation_cve_2020_0551 = match env::var("MITIGATION_CVE_2020_0551")
             .or_else(|_| env::var("MITIGATION-CVE-2020-0551"))
@@ -121,7 +115,7 @@ impl SgxBuilder {
         let gcc_version = Self::detect_gcc_version();
 
         Self {
-            sgx_sdk: PathBuf::from(sgx_sdk),
+            sgx_sdk,
             sgx_mode,
             sgx_arch,
             debug,
@@ -203,10 +197,7 @@ impl SgxBuilder {
 
     /// Get SDK library path based on architecture
     pub fn get_sdk_lib_path(&self) -> PathBuf {
-        match self.sgx_arch.as_str() {
-            "x86" => self.sgx_sdk.join("lib"),
-            _ => self.sgx_sdk.join("lib64"),
-        }
+        sgx_build_env::sdk_lib_path()
     }
 
     /// Get architecture-specific flags

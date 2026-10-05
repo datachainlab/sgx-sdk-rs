@@ -1,12 +1,10 @@
 [package]
-name        = "sgx-build"
+name        = "sgx-build-env"
 version     = "1.2.0"
 authors     = ["The SGX-SDK-RS Authors"]
 edition     = "2021"
-description = "Build utilities for SGX enclaves"
+description = "Locates the Intel SGX SDK from the environment"
 repository  = "https://github.com/datachainlab/sgx-sdk-rs"
 license     = "Apache-2.0"
 
 [dependencies]
-cc            = "1"
-sgx-build-env = { path = "../sgx-build-env" }
