@@ -115,6 +115,18 @@ pub extern "C" fn test_main_entrance() -> size_t {
     }
 
     // rts tests
+    print!("test_global_ctor_ran ... ");
+    match test_global_ctor_ran() {
+        Ok(_) => {
+            println!("ok");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("failed: {:?}", e);
+            failed += 1;
+        }
+    }
+
     print!("test_rsgx_get_thread_policy ... ");
     match test_rsgx_get_thread_policy() {
         Ok(_) => {
