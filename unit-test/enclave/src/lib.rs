@@ -339,7 +339,12 @@ pub extern "C" fn test_main_entrance() -> size_t {
         }
     }
 
-    println!("\ntest result: ok. {} passed; {} failed", passed, failed);
+    println!(
+        "\ntest result: {}. {} passed; {} failed",
+        if failed == 0 { "ok" } else { "FAILED" },
+        passed,
+        failed
+    );
 
-    passed
+    failed
 }
