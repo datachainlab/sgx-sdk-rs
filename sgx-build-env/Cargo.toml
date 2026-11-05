@@ -1,6 +1,6 @@
 [package]
 name        = "sgx-build-env"
-version     = "1.2.0"
+version     = "0.1.0"
 authors     = ["The SGX-SDK-RS Authors"]
 edition     = "2021"
 description = "Locates the Intel SGX SDK from the environment"

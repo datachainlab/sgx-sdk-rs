@@ -9,7 +9,7 @@ A Cargo subcommand for building Intel SGX enclaves with Rust. This tool simplifi
 $ cargo install --path .
 
 # From GitHub
-$ cargo install --git https://github.com/datachainlab/sgx-sdk-rs --branch main cargo-sgx
+$ cargo install --git https://github.com/datachainlab/sgx-sdk-rs --tag v0.1.0 cargo-sgx
 ```
 
 ## Commands

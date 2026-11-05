@@ -1,7 +1,7 @@
 [package]
 name    = "enclave"
 version = "0.1.0"
-authors = ["Your Name <you@example.com>"]
+authors = ["The SGX-SDK-RS Authors"]
 edition = "2021"
 
 [lib]

@@ -2,6 +2,8 @@
 
 Rust SDK for [Intel SGX (Software Guard Extensions)](https://github.com/intel/linux-sgx) - A collection of tools and libraries for building secure enclaves in Rust.
 
+Forked from [Apache Teaclave SGX SDK](https://github.com/apache/teaclave-sgx-sdk) at commit [`1b1d033`](https://github.com/apache/teaclave-sgx-sdk/tree/1b1d03376056321441ef99716aa0888bd5ef19f7).
+
 ## Features
 
 - **Rust SGX Libraries**: Core libraries for developing SGX enclaves
@@ -15,7 +17,7 @@ Rust SDK for [Intel SGX (Software Guard Extensions)](https://github.com/intel/li
 ### Install cargo-sgx
 
 ```bash
-cargo install --git https://github.com/datachainlab/sgx-sdk-rs --branch main cargo-sgx
+cargo install --git https://github.com/datachainlab/sgx-sdk-rs --tag v0.1.0 cargo-sgx
 ```
 
 Or install from local directory:

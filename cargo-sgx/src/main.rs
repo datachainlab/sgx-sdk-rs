@@ -15,6 +15,8 @@ const ENCLAVE_LDS_FILE: &str = "Enclave.lds";
 const ENCLAVE_SO_FILE: &str = "enclave.so";
 const DEFAULT_ENCLAVE_NAME: &str = "enclave";
 const SGX_SDK_REPO_URL: &str = "https://github.com/datachainlab/sgx-sdk-rs";
+// Generated projects depend on the SDK release that matches this cargo-sgx version.
+const SGX_SDK_REPO_TAG: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 
 /// Get the target directory for EDL artifacts
 fn get_edl_target_dir() -> PathBuf {
@@ -649,8 +651,8 @@ sgx-types = {{ path = "{sdk_path_str}/sgx-types", default-features = false, feat
         )
     } else {
         format!(
-            r#"sgx-ert = {{ git = "{SGX_SDK_REPO_URL}", branch = "main" }}
-sgx-types = {{ git = "{SGX_SDK_REPO_URL}", branch = "main", default-features = false, features = [
+            r#"sgx-ert = {{ git = "{SGX_SDK_REPO_URL}", tag = "{SGX_SDK_REPO_TAG}" }}
+sgx-types = {{ git = "{SGX_SDK_REPO_URL}", tag = "{SGX_SDK_REPO_TAG}", default-features = false, features = [
   "tstdc",
   "trts",
   "tcrypto",
@@ -663,7 +665,7 @@ sgx-types = {{ git = "{SGX_SDK_REPO_URL}", branch = "main", default-features = f
         let sdk_path_str = sdk_path.to_string_lossy();
         format!(r#"sgx-build = {{ path = "{sdk_path_str}/sgx-build" }}"#)
     } else {
-        format!(r#"sgx-build = {{ git = "{SGX_SDK_REPO_URL}", branch = "main" }}"#)
+        format!(r#"sgx-build = {{ git = "{SGX_SDK_REPO_URL}", tag = "{SGX_SDK_REPO_TAG}" }}"#)
     };
 
     // Use sanitized enclave name for lib name (replace hyphens with underscores)
