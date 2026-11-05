@@ -1,6 +1,6 @@
 [package]
 name        = "cargo-sgx"
-version     = "1.2.0"
+version     = "0.1.0"
 authors     = ["The SGX-SDK-RS Authors"]
 edition     = "2021"
 description = "Cargo subcommand for SGX enclave development"

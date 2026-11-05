@@ -1,7 +1,7 @@
 [package]
 authors     = ["The Teaclave Authors", "The SGX-SDK-RS Authors"]
 name        = "sgx-types"
-version     = "1.2.0"
+version     = "0.1.0"
 repository  = "https://github.com/datachainlab/sgx-sdk-rs"
 license     = "Apache-2.0"
 description = "Rust SGX SDK provides the ability to write Intel SGX applications in Rust Programming Language."

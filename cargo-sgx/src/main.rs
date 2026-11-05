@@ -15,6 +15,8 @@ const ENCLAVE_LDS_FILE: &str = "Enclave.lds";
 const ENCLAVE_SO_FILE: &str = "enclave.so";
 const DEFAULT_ENCLAVE_NAME: &str = "enclave";
 const SGX_SDK_REPO_URL: &str = "https://github.com/datachainlab/sgx-sdk-rs";
+// By default, generated projects depend on the SDK release that matches this cargo-sgx version.
+const DEFAULT_SGX_SDK_TAG: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 
 /// Get the target directory for EDL artifacts
 fn get_edl_target_dir() -> PathBuf {
@@ -123,6 +125,31 @@ struct SgxNewArgs {
     /// Path to sgx-sdk-rs repository (default: uses GitHub URL)
     #[arg(long)]
     sgx_sdk_path: Option<PathBuf>,
+
+    /// Git tag of sgx-sdk-rs on GitHub that the project depends on
+    #[arg(
+        long,
+        value_name = "TAG",
+        default_value = DEFAULT_SGX_SDK_TAG,
+        value_parser = parse_git_tag,
+        conflicts_with = "sgx_sdk_path"
+    )]
+    sgx_sdk_tag: String,
+}
+
+/// Rejects values that cannot be a git tag name. The tag is written into the
+/// generated Cargo.toml as-is, so this also keeps that file well-formed.
+fn parse_git_tag(s: &str) -> Result<String, String> {
+    let invalid = s.is_empty()
+        || s.contains("..")
+        || s.contains("@{")
+        || s.chars()
+            .any(|c| c.is_whitespace() || c.is_control() || "~^:?*[\\\"".contains(c));
+    if invalid {
+        Err(format!("{s:?} is not a valid tag name"))
+    } else {
+        Ok(s.to_owned())
+    }
 }
 
 fn main() -> ExitCode {
@@ -407,7 +434,13 @@ fn run_sgx_new(args: SgxNewArgs) -> Result<()> {
     };
 
     // Create template files
-    create_cargo_toml(&project_dir, &enclave_name, args.force, sgx_sdk_path)?;
+    create_cargo_toml(
+        &project_dir,
+        &enclave_name,
+        args.force,
+        sgx_sdk_path,
+        &args.sgx_sdk_tag,
+    )?;
     create_src_lib_rs(&project_dir, args.force)?;
     create_build_rs(&project_dir, args.force, mitigation.as_deref())?;
     create_enclave_config(&project_dir, &enclave_name, args.force)?;
@@ -630,6 +663,7 @@ fn create_cargo_toml(
     enclave_name: &str,
     force: bool,
     sgx_sdk_path: Option<PathBuf>,
+    sgx_sdk_tag: &str,
 ) -> Result<()> {
     let path = dir.join("Cargo.toml");
     if path.exists() && !force {
@@ -649,8 +683,8 @@ sgx-types = {{ path = "{sdk_path_str}/sgx-types", default-features = false, feat
         )
     } else {
         format!(
-            r#"sgx-ert = {{ git = "{SGX_SDK_REPO_URL}", branch = "main" }}
-sgx-types = {{ git = "{SGX_SDK_REPO_URL}", branch = "main", default-features = false, features = [
+            r#"sgx-ert = {{ git = "{SGX_SDK_REPO_URL}", tag = "{sgx_sdk_tag}" }}
+sgx-types = {{ git = "{SGX_SDK_REPO_URL}", tag = "{sgx_sdk_tag}", default-features = false, features = [
   "tstdc",
   "trts",
   "tcrypto",
@@ -663,7 +697,7 @@ sgx-types = {{ git = "{SGX_SDK_REPO_URL}", branch = "main", default-features = f
         let sdk_path_str = sdk_path.to_string_lossy();
         format!(r#"sgx-build = {{ path = "{sdk_path_str}/sgx-build" }}"#)
     } else {
-        format!(r#"sgx-build = {{ git = "{SGX_SDK_REPO_URL}", branch = "main" }}"#)
+        format!(r#"sgx-build = {{ git = "{SGX_SDK_REPO_URL}", tag = "{sgx_sdk_tag}" }}"#)
     };
 
     // Use sanitized enclave name for lib name (replace hyphens with underscores)
