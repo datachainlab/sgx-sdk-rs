@@ -17,8 +17,28 @@
 
 use crate::TestResult;
 
+use core::sync::atomic::{AtomicBool, Ordering};
 use sgx_trts::enclave::*;
 use sgx_trts::trts::*;
+use sgx_types::cfg_if;
+
+/// Set from a global constructor.
+static GLOBAL_CTOR_RAN: AtomicBool = AtomicBool::new(false);
+
+sgx_trts::global_ctors_object! {
+    TEST_GLOBAL_CTOR, test_global_ctor_init = {
+        GLOBAL_CTOR_RAN.store(true, Ordering::SeqCst);
+    }
+}
+
+/// The macro expands to nothing on a target it does not recognise, and the
+/// enclave still links and signs, so only a run-time check catches it.
+pub fn test_global_ctor_ran() -> TestResult {
+    if !GLOBAL_CTOR_RAN.load(Ordering::SeqCst) {
+        return Err("global constructor did not run; .init_array was not populated");
+    }
+    Ok(())
+}
 
 pub fn test_rsgx_get_thread_policy() -> TestResult {
     if rsgx_get_thread_policy() != SgxThreadPolicy::Bound {

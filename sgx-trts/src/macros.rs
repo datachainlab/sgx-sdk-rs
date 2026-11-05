@@ -23,11 +23,14 @@
 /// of the generated enclave binary. On the first ecall of enclave's execution,
 /// SGX would execute these registered functions and thus initialize data
 /// structures.
+///
+/// `target_env = "sgx"` covers the x86_64-unknown-unknown-sgx target. Without
+/// it the macro expands to nothing there and the constructor is never run.
 #[macro_export]
 macro_rules! global_ctors_object {
     ($var_name:ident, $func_name:ident = $func:block) => {
         cfg_if! {
-            if #[cfg(target_os = "linux")] {
+            if #[cfg(any(target_os = "linux", target_env = "sgx"))] {
                 #[link_section = ".init_array"]
                 #[no_mangle]
                 pub static $var_name: fn() = $func_name;
@@ -54,7 +57,7 @@ macro_rules! global_ctors_object {
 macro_rules! global_dtors_object {
     ($var_name:ident, $func_name:ident = $func:block) => {
         cfg_if! {
-            if #[cfg(target_os = "linux")] {
+            if #[cfg(any(target_os = "linux", target_env = "sgx"))] {
                 #[link_section = ".fini_array"]
                 #[no_mangle]
                 pub static $var_name: fn() = $func_name;
